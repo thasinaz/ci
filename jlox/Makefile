@@ -1,14 +1,22 @@
-SRC_PATH = src/main/com/craftinginterpreters/lox/
-SRC := $(wildcard $(SRC_PATH)/*.java)
-CLASS = $(SRC:.java=.class)
+PACKAGE := lox
+DIR := .
 
-.PHONY: all
-all: $(CLASS)
+BUILD_DIR := build
 
-$(CLASS): $(SRC)
-	javac $(SRC)
+SOURCES := $(wildcard $(DIR)/com/craftinginterpreters/$(PACKAGE)/*.java)
+CLASSES := $(addprefix $(BUILD_DIR)/, $(SOURCES:.java=.class))
 
-.PHONY: clean
+JAVA_OPTIONS := -Werror
+
+default: $(CLASSES)
+
+# Compile a single .java file to .class.
+$(BUILD_DIR)/$(DIR)/%.class: $(DIR)/%.java
+	@ mkdir -p $(BUILD_DIR)/$(DIR)
+	@ javac -cp $(DIR) -d $(BUILD_DIR)/$(DIR) $(JAVA_OPTIONS) -implicit:none $<
+	@ printf "%8s %-60s %s\n" javac $< "$(JAVA_OPTIONS)"
+
 clean:
-	rm $(CLASS)
+	rm -r $(BUILD_DIR)
 
+.PHONY: default clean
