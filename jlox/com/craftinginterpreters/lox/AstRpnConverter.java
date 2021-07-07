@@ -27,6 +27,11 @@ class AstRpnConverter implements Expr.Visitor<String> {
     return rpn(expr.operator.lexeme, expr.right);
   }
 
+  @Override
+  public String visitTernaryExpr(Expr.Ternary expr) {
+    return rpn("?:", expr.left, expr.middle, expr.right);
+  }
+
   private String rpn(String name, Expr... exprs) {
     StringBuilder builder = new StringBuilder();
 

@@ -33,7 +33,20 @@ class Parser {
   }
 
   private Expr expression() {
-    return equality();
+    return ternary();
+  }
+
+  private Expr ternary() {
+    Expr expr = equality();
+
+    if (match(QUESTION_MARK)) {
+      Expr middle = ternary();
+      consume(COLON, "Expect ':' after '?'.");
+      Expr right = ternary();
+      expr = new Expr.Ternary(expr, middle, right);
+    }
+
+    return expr;
   }
 
   private Expr equality() {
