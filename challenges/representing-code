@@ -1,0 +1,12 @@
+1.
+expr → expr call
+expr → IDENTIFIER
+expr → NUMBER
+
+call → call call
+call → "()"
+call → "(" arg ")"
+call → "." IDENTIFIER
+
+arg → expr;
+arg → arg "," expr
