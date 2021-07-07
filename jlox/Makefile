@@ -20,7 +20,6 @@ generate_code:
 	java com/craftinginterpreters/tool/GenerateAst.java com/craftinginterpreters/lox
 
 clean:
-	rm -r $(BUILD_DIR)
-	rm com/craftinginterpreters/lox/Expr.java
+	rm -r $(BUILD_DIR) com/craftinginterpreters/lox/Expr.java
 
 .PHONY: all generate_code clean
