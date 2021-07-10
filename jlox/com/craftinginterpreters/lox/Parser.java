@@ -122,6 +122,30 @@ class Parser {
       return new Expr.Grouping(expr);
     }
 
+    if (match(BANG_EQUAL, EQUAL_EQUAL)) {
+      Token operator = previous();
+      comparison();
+      throw error(operator, "Expect operand.");
+    }
+
+    if (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
+      Token operator = previous();
+      term();
+      throw error(operator, "Expect operand.");
+    }
+
+    if (match(PLUS)) {
+      Token operator = previous();
+      factor();
+      throw error(operator, "Expect operand.");
+    }
+
+    if (match(SLASH, STAR)) {
+      Token operator = previous();
+      unary();
+      throw error(operator, "Expect operand.");
+    }
+
     throw error(peek(), "Expect expression.");
 }
 
