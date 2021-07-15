@@ -40,7 +40,7 @@ class Interpreter implements Expr.Visitor<Object> {
   @Override
   public Object visitBinaryExpr(Expr.Binary expr) {
     Object left = evaluate(expr.left);
-    Object right = evaluate(expr.right); 
+    Object right = evaluate(expr.right);
 
     switch (expr.operator.type) {
       case BANG_EQUAL: return !isEqual(left, right);
@@ -63,7 +63,7 @@ class Interpreter implements Expr.Visitor<Object> {
       case PLUS:
         if (left instanceof Double && right instanceof Double) {
           return (double)left + (double)right;
-        } 
+        }
 
         if (left instanceof String && right instanceof String) {
           return (String)left + (String)right;
@@ -108,7 +108,7 @@ class Interpreter implements Expr.Visitor<Object> {
   private void checkNumberOperands(Token operator,
                                    Object left, Object right) {
     if (left instanceof Double && right instanceof Double) return;
-    
+
     throw new RuntimeError(operator, "Operands must be numbers.");
   }
 
