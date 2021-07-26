@@ -1,7 +1,7 @@
 package com.craftinginterpreters.lox;
 
 class AstPrinter implements Expr.Visitor<String>,
-                             Stmt.Visitor<String> {
+                            Stmt.Visitor<String> {
   String print(Stmt stmt) {
     return stmt.accept(this);
   }
