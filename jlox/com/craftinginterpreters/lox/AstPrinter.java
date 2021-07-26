@@ -1,8 +1,18 @@
 package com.craftinginterpreters.lox;
 
-class AstPrinter implements Expr.Visitor<String> {
+class AstPrinter implements Expr.Visitor<String>,
+                             Stmt.Visitor<String> {
   String print(Expr expr) {
     return expr.accept(this);
+  }
+
+  String print(Stmt stmt) {
+    return stmt.accept(this);
+  }
+
+  @Override
+  public String visitAssignExpr(Expr.Assign expr) {
+    return parenthesize("assign " + expr.name.lexeme, expr.value);
   }
 
   @Override
@@ -19,12 +29,41 @@ class AstPrinter implements Expr.Visitor<String> {
   @Override
   public String visitLiteralExpr(Expr.Literal expr) {
     if (expr.value == null) return "nil";
+    if (expr.value instanceof String) return "\"" + expr.value.toString() + "\"";
     return expr.value.toString();
   }
 
   @Override
   public String visitUnaryExpr(Expr.Unary expr) {
     return parenthesize(expr.operator.lexeme, expr.right);
+  }
+
+  @Override
+  public String visitVariableExpr(Expr.Variable expr) {
+    return expr.name.lexeme;
+  }
+
+  @Override
+  public String visitBlockStmt(Stmt.Block stmt) {
+    return parenthesize("do", stmt.statements.toArray(new Stmt[stmt.statements.size()]));
+  }
+
+  @Override
+  public String visitExpressionStmt(Stmt.Expression stmt) {
+    return stmt.expression.accept(this);
+  }
+
+  @Override
+  public String visitPrintStmt(Stmt.Print stmt) {
+    return parenthesize("print", stmt.expression);
+  }
+
+  @Override
+  public String visitVarStmt(Stmt.Var stmt) {
+    if (stmt.initializer != null) {
+      return parenthesize("define " + stmt.name.lexeme, stmt.initializer);
+    }
+    return "(define " + stmt.name.lexeme + ")";
   }
 
   private String parenthesize(String name, Expr... exprs) {
@@ -34,6 +73,19 @@ class AstPrinter implements Expr.Visitor<String> {
     for (Expr expr : exprs) {
       builder.append(" ");
       builder.append(expr.accept(this));
+    }
+    builder.append(")");
+
+    return builder.toString();
+  }
+
+  private String parenthesize(String name, Stmt... stmts) {
+    StringBuilder builder = new StringBuilder();
+
+    builder.append("(").append(name);
+    for (Stmt stmt : stmts) {
+      builder.append(" ");
+      builder.append(stmt.accept(this));
     }
     builder.append(")");
 

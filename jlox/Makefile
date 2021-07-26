@@ -3,6 +3,9 @@ DIR := .
 
 BUILD_DIR := build
 
+GENERATED_FILE := Expr.java Stmt.java
+GENERATED_FILE := $(addprefix $(DIR)/com/craftinginterpreters/$(PACKAGE)/, $(GENERATED_FILE))
+
 SOURCES := $(wildcard $(DIR)/com/craftinginterpreters/$(PACKAGE)/*.java)
 CLASSES := $(addprefix $(BUILD_DIR)/, $(SOURCES:.java=.class))
 
@@ -17,9 +20,9 @@ $(BUILD_DIR)/$(DIR)/%.class: $(DIR)/%.java
 	@ printf "%8s %-60s %s\n" javac $< "$(JAVA_OPTIONS)"
 
 generate_code:
-	java com/craftinginterpreters/tool/GenerateAst.java com/craftinginterpreters/lox
+	java com/craftinginterpreters/tool/GenerateAst.java com/craftinginterpreters/$(PACKAGE)
 
 clean:
-	rm -r $(BUILD_DIR) com/craftinginterpreters/lox/Expr.java
+	rm -r $(BUILD_DIR) $(GENERATED_FILE)
 
 .PHONY: all generate_code clean
