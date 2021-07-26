@@ -17,30 +17,40 @@ class Interpreter implements Expr.Visitor<Object>,
   }
 
   @Override
-  public Object visitLiteralExpr(Expr.Literal expr) {
-    return expr.value;
+  public Void visitBlockStmt(Stmt.Block stmt) {
+    executeBlock(stmt.statements, new Environment(environment));
+    return null;
   }
 
   @Override
-  public Object visitGroupingExpr(Expr.Grouping expr) {
-    return evaluate(expr.expression);
+  public Void visitExpressionStmt(Stmt.Expression stmt) {
+    evaluate(stmt.expression);
+    return null;
   }
 
   @Override
-  public Object visitUnaryExpr(Expr.Unary expr) {
-    Object right = evaluate(expr.right);
+  public Void visitPrintStmt(Stmt.Print stmt) {
+    Object value = evaluate(stmt.expression);
+    System.out.println(stringify(value));
+    return null;
+  }
 
-
-    switch (expr.operator.type) {
-      case BANG:
-        return !isTruthy(right);
-      case MINUS:
-        checkNumberOperand(expr.operator, right);
-        return -(double)right;
+  @Override
+  public Void visitVarStmt(Stmt.Var stmt) {
+    Object value = null;
+    if (stmt.initializer != null) {
+      value = evaluate(stmt.initializer);
     }
 
-    // Unreachable.
+    environment.define(stmt.name.lexeme, value);
     return null;
+  }
+
+  @Override
+  public Object visitAssignExpr(Expr.Assign expr) {
+    Object value = evaluate(expr.value);
+    environment.assign(expr.name, value);
+    return value;
   }
 
   @Override
@@ -90,53 +100,35 @@ class Interpreter implements Expr.Visitor<Object>,
   }
 
   @Override
-  public Object visitVariableExpr(Expr.Variable expr) {
-    return environment.get(expr.name);
+  public Object visitGroupingExpr(Expr.Grouping expr) {
+    return evaluate(expr.expression);
   }
 
   @Override
-  public Object visitAssignExpr(Expr.Assign expr) {
-    Object value = evaluate(expr.value);
-    environment.assign(expr.name, value);
-    return value;
+  public Object visitLiteralExpr(Expr.Literal expr) {
+    return expr.value;
   }
 
   @Override
-  public Void visitBlockStmt(Stmt.Block stmt) {
-    executeBlock(stmt.statements, new Environment(environment));
-    return null;
-  }
+  public Object visitUnaryExpr(Expr.Unary expr) {
+    Object right = evaluate(expr.right);
 
-  @Override
-  public Void visitExpressionStmt(Stmt.Expression stmt) {
-    evaluate(stmt.expression);
-    return null;
-  }
 
-  @Override
-  public Void visitPrintStmt(Stmt.Print stmt) {
-    Object value = evaluate(stmt.expression);
-    System.out.println(stringify(value));
-    return null;
-  }
-
-  @Override
-  public Void visitVarStmt(Stmt.Var stmt) {
-    Object value = null;
-    if (stmt.initializer != null) {
-      value = evaluate(stmt.initializer);
+    switch (expr.operator.type) {
+      case BANG:
+        return !isTruthy(right);
+      case MINUS:
+        checkNumberOperand(expr.operator, right);
+        return -(double)right;
     }
 
-    environment.define(stmt.name.lexeme, value);
+    // Unreachable.
     return null;
   }
 
-  private Object evaluate(Expr expr) {
-    return expr.accept(this);
-  }
-
-  private void execute(Stmt stmt) {
-    stmt.accept(this);
+  @Override
+  public Object visitVariableExpr(Expr.Variable expr) {
+    return environment.get(expr.name);
   }
 
   void executeBlock(List<Stmt> statements,
@@ -153,10 +145,12 @@ class Interpreter implements Expr.Visitor<Object>,
     }
   }
 
-  private boolean isTruthy(Object object) {
-    if (object == null) return false;
-    if (object instanceof Boolean) return (boolean)object;
-    return true;
+  private void execute(Stmt stmt) {
+    stmt.accept(this);
+  }
+
+  private Object evaluate(Expr expr) {
+    return expr.accept(this);
   }
 
   private boolean isEqual(Object a, Object b) {
@@ -164,6 +158,12 @@ class Interpreter implements Expr.Visitor<Object>,
     if (a == null) return false;
 
     return a.equals(b);
+  }
+
+  private boolean isTruthy(Object object) {
+    if (object == null) return false;
+    if (object instanceof Boolean) return (boolean)object;
+    return true;
   }
 
   private void checkNumberOperand(Token operator, Object operand) {
