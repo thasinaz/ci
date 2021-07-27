@@ -81,7 +81,9 @@ class Parser {
     Expr expr = assignment();
 
     while (match(COMMA)) {
-      expr = assignment();
+      Token comma = previous();
+      Expr right = assignment();
+      expr = new Expr.Binary(expr, comma, right);
     }
 
     return expr;
