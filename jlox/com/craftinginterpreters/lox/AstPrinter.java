@@ -17,7 +17,7 @@ class AstPrinter implements Expr.Visitor<String>,
 
   @Override
   public String visitExpressionStmt(Stmt.Expression stmt) {
-    return stmt.expression.accept(this);
+    return print(stmt.expression);
   }
 
   @Override
@@ -35,7 +35,7 @@ class AstPrinter implements Expr.Visitor<String>,
 
   @Override
   public String visitAssignExpr(Expr.Assign expr) {
-    return parenthesize("assign " + expr.name.lexeme, expr.value);
+    return parenthesize("= " + expr.name.lexeme, expr.value);
   }
 
   @Override
@@ -72,7 +72,7 @@ class AstPrinter implements Expr.Visitor<String>,
     builder.append("(").append(name);
     for (Stmt stmt : stmts) {
       builder.append(" ");
-      builder.append(stmt.accept(this));
+      builder.append(print(stmt));
     }
     builder.append(")");
 
@@ -85,7 +85,7 @@ class AstPrinter implements Expr.Visitor<String>,
     builder.append("(").append(name);
     for (Expr expr : exprs) {
       builder.append(" ");
-      builder.append(expr.accept(this));
+      builder.append(print(expr));
     }
     builder.append(")");
 
