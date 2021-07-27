@@ -1,15 +1,47 @@
 package com.craftinginterpreters.lox;
 
-class AstRpnConverter implements Expr.Visitor<String> {
+class AstRpnConverter implements Expr.Visitor<String>,
+                                 Stmt.Visitor<String> {
+  String convert(Stmt stmt) {
+    return stmt.accept(this);
+  }
+
   String convert(Expr expr) {
     return expr.accept(this);
   }
 
   @Override
+  public String visitBlockStmt(Stmt.Block stmt) {
+    StringBuilder builder = new StringBuilder("do ");
+    builder.append(rpn("end", stmt.statements.toArray(new Stmt[stmt.statements.size()])));
+
+    return builder.toString();
+  }
+
+  @Override
+  public String visitExpressionStmt(Stmt.Expression stmt) {
+    return convert(stmt.expression);
+  }
+
+  @Override
+  public String visitPrintStmt(Stmt.Print stmt) {
+    return rpn("print", stmt.expression);
+  }
+
+  @Override
+  public String visitVarStmt(Stmt.Var stmt) {
+    StringBuilder builder = new StringBuilder(stmt.name.lexeme);
+    builder.append(" ");
+    builder.append(rpn("define", stmt.initializer));
+
+    return builder.toString();
+  }
+
+  @Override
   public String visitAssignExpr(Expr.Assign expr) {
     StringBuilder builder = new StringBuilder(expr.name.lexeme);
-    builder.append(expr.value.accept(this));
-    builder.append("=");
+    builder.append(" ");
+    builder.append(rpn("=", expr.value));
 
     return builder.toString();
   }
@@ -28,6 +60,7 @@ class AstRpnConverter implements Expr.Visitor<String> {
   @Override
   public String visitLiteralExpr(Expr.Literal expr) {
     if (expr.value == null) return "nil";
+    if (expr.value instanceof String) return "\"" + expr.value.toString() + "\"";
     return expr.value.toString();
   }
 
@@ -44,6 +77,18 @@ class AstRpnConverter implements Expr.Visitor<String> {
   @Override
   public String visitVariableExpr(Expr.Variable expr) {
     return expr.name.lexeme;
+  }
+
+  private String rpn(String name, Stmt... stmts) {
+    StringBuilder builder = new StringBuilder();
+
+    for (Stmt stmt : stmts) {
+      builder.append(convert(stmt));
+      builder.append(" ");
+    }
+    builder.append(name);
+
+    return builder.toString();
   }
 
   private String rpn(String name, Expr... exprs) {
