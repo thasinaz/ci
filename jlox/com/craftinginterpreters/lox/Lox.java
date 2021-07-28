@@ -41,7 +41,11 @@ public class Lox {
       System.out.print("> ");
       String line = reader.readLine();
       if (line == null) break;
-      run(line);
+      if (line.contains(";")) {
+        run(line);
+      } else {
+        runExpr(line);
+      }
       hadError = false;
     }
   }
@@ -56,6 +60,18 @@ public class Lox {
     if (hadError) return;
 
     interpreter.interpret(statments);
+  }
+
+  private static void runExpr(String source) {
+    Scanner scanner = new Scanner(source);
+    List<Token> tokens = scanner.scanTokens();
+    Parser parser = new Parser(tokens);
+    Expr expression = parser.parseExpr();
+
+    // Stop if there was a syntax error.
+    if (hadError) return;
+
+    interpreter.interpret(expression);
   }
 
   static void error(int line, String message) {

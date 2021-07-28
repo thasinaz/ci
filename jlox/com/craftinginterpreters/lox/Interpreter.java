@@ -16,6 +16,15 @@ class Interpreter implements Expr.Visitor<Object>,
     }
   }
 
+  void interpret(Expr expr) {
+    try {
+      Object value = evaluate(expr);
+      System.out.println(stringify(value));
+    } catch (RuntimeError error) {
+      Lox.runtimeError(error);
+    }
+  }
+
   @Override
   public Void visitBlockStmt(Stmt.Block stmt) {
     executeBlock(stmt.statements, new Environment(environment));

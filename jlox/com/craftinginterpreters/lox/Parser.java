@@ -24,6 +24,14 @@ class Parser {
     return statements;
   }
 
+  Expr parseExpr() {
+    try {
+      return expression();
+    } catch (ParseError error) {
+      return null;
+    }
+  }
+
   private Stmt declaration() {
     try {
       if (match(VAR)) return varDeclaration();
