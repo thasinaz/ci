@@ -5,7 +5,7 @@ import java.util.Map;
 
 class Environment {
   final Environment enclosing;
-  private final Map<String, Object> values = new HashMap<>();
+  private final Map<String, Object[]> values = new HashMap<>();
 
   Environment() {
     enclosing = null;
@@ -15,13 +15,18 @@ class Environment {
     this.enclosing = enclosing;
   }
 
-  void define(String name, Object value) {
-    values.put(name, value);
+  void define(String name, boolean initialized, Object value) {
+    values.put(name, new Object[]{initialized, value});
   }
 
   Object get(Token name) {
     if (values.containsKey(name.lexeme)) {
-      return values.get(name.lexeme);
+      if ((boolean)values.get(name.lexeme)[0]) {
+        return values.get(name.lexeme)[1];
+      }
+
+      throw new RuntimeError(name,
+          "Uninitialized variable '" + name.lexeme + "'.");
     }
 
     if (enclosing != null) return enclosing.get(name);
@@ -32,7 +37,7 @@ class Environment {
 
   void assign(Token name, Object value) {
     if (values.containsKey(name.lexeme)) {
-      values.put(name.lexeme, value);
+      values.put(name.lexeme, new Object[]{true, value});
       return;
     }
 
