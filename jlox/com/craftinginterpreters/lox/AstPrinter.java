@@ -21,6 +21,15 @@ class AstPrinter implements Expr.Visitor<String>,
   }
 
   @Override
+  public String visitIfStmt(Stmt.If stmt) {
+    if (stmt.elseBranch == null) {
+      return parenthesize("if " + print(stmt.condition), stmt.thenBranch);
+    } else {
+      return parenthesize("if " + print(stmt.condition), stmt.thenBranch, stmt.elseBranch);
+    }
+  }
+
+  @Override
   public String visitPrintStmt(Stmt.Print stmt) {
     return parenthesize("print", stmt.expression);
   }
@@ -31,6 +40,11 @@ class AstPrinter implements Expr.Visitor<String>,
       return parenthesize("define " + stmt.name.lexeme, stmt.initializer);
     }
     return "(define " + stmt.name.lexeme + ")";
+  }
+
+  @Override
+  public String visitWhileStmt(Stmt.While stmt) {
+    return parenthesize("while " + print(stmt.condition), stmt.body);
   }
 
   @Override
@@ -54,6 +68,11 @@ class AstPrinter implements Expr.Visitor<String>,
     if (expr.value == null) return "nil";
     if (expr.value instanceof String) return "\"" + expr.value.toString() + "\"";
     return expr.value.toString();
+  }
+
+  @Override
+  public String visitLogicalExpr(Expr.Logical expr) {
+    return parenthesize(expr.operator.lexeme, expr.left, expr.right);
   }
 
   @Override
