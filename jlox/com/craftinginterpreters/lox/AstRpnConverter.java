@@ -1,7 +1,5 @@
 package com.craftinginterpreters.lox;
 
-import com.craftinginterpreters.lox.Stmt.While;
-
 class AstRpnConverter implements Expr.Visitor<String>,
                                  Stmt.Visitor<String> {
   String convert(Stmt stmt) {
