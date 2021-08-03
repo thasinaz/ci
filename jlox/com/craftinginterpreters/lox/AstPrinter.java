@@ -1,7 +1,7 @@
 package com.craftinginterpreters.lox;
 
 class AstPrinter implements Expr.Visitor<String>,
-                             Stmt.Visitor<String> {
+                            Stmt.Visitor<String> {
   String print(Stmt stmt) {
     return stmt.accept(this);
   }
@@ -17,7 +17,16 @@ class AstPrinter implements Expr.Visitor<String>,
 
   @Override
   public String visitExpressionStmt(Stmt.Expression stmt) {
-    return stmt.expression.accept(this);
+    return print(stmt.expression);
+  }
+
+  @Override
+  public String visitIfStmt(Stmt.If stmt) {
+    if (stmt.elseBranch == null) {
+      return parenthesize("if " + print(stmt.condition), stmt.thenBranch);
+    } else {
+      return parenthesize("if " + print(stmt.condition), stmt.thenBranch, stmt.elseBranch);
+    }
   }
 
   @Override
@@ -34,8 +43,13 @@ class AstPrinter implements Expr.Visitor<String>,
   }
 
   @Override
+  public String visitWhileStmt(Stmt.While stmt) {
+    return parenthesize("while " + print(stmt.condition), stmt.body);
+  }
+
+  @Override
   public String visitAssignExpr(Expr.Assign expr) {
-    return parenthesize("assign " + expr.name.lexeme, expr.value);
+    return parenthesize("= " + expr.name.lexeme, expr.value);
   }
 
   @Override
@@ -57,6 +71,11 @@ class AstPrinter implements Expr.Visitor<String>,
   }
 
   @Override
+  public String visitLogicalExpr(Expr.Logical expr) {
+    return parenthesize(expr.operator.lexeme, expr.left, expr.right);
+  }
+
+  @Override
   public String visitTernaryExpr(Expr.Ternary expr) {
     return parenthesize(":?", expr.left, expr.middle, expr.right);
   }
@@ -66,6 +85,7 @@ class AstPrinter implements Expr.Visitor<String>,
     return parenthesize(expr.operator.lexeme, expr.right);
   }
 
+  @Override
   public String visitVariableExpr(Expr.Variable expr) {
     return expr.name.lexeme;
   }
@@ -76,7 +96,7 @@ class AstPrinter implements Expr.Visitor<String>,
     builder.append("(").append(name);
     for (Stmt stmt : stmts) {
       builder.append(" ");
-      builder.append(stmt.accept(this));
+      builder.append(print(stmt));
     }
     builder.append(")");
 
@@ -89,7 +109,7 @@ class AstPrinter implements Expr.Visitor<String>,
     builder.append("(").append(name);
     for (Expr expr : exprs) {
       builder.append(" ");
-      builder.append(expr.accept(this));
+      builder.append(print(expr));
     }
     builder.append(")");
 

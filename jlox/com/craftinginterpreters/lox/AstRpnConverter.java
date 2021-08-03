@@ -1,5 +1,7 @@
 package com.craftinginterpreters.lox;
 
+import com.craftinginterpreters.lox.Stmt.While;
+
 class AstRpnConverter implements Expr.Visitor<String>,
                                  Stmt.Visitor<String> {
   String convert(Stmt stmt) {
@@ -24,6 +26,19 @@ class AstRpnConverter implements Expr.Visitor<String>,
   }
 
   @Override
+  public String visitIfStmt(Stmt.If stmt) {
+    StringBuilder builder = new StringBuilder(convert(stmt.condition));
+    builder.append(" ");
+    if (stmt.elseBranch == null) {
+      builder.append(rpn("if", stmt.thenBranch));
+    } else {
+      builder.append(rpn("if", stmt.thenBranch, stmt.elseBranch));
+    }
+
+    return builder.toString();
+  }
+
+  @Override
   public String visitPrintStmt(Stmt.Print stmt) {
     return rpn("print", stmt.expression);
   }
@@ -35,6 +50,11 @@ class AstRpnConverter implements Expr.Visitor<String>,
     builder.append(rpn("define", stmt.initializer));
 
     return builder.toString();
+  }
+
+  @Override
+  public String visitWhileStmt(Stmt.While stmt) {
+    return rpn("while " + convert(stmt.condition), stmt.body);
   }
 
   @Override
@@ -62,6 +82,11 @@ class AstRpnConverter implements Expr.Visitor<String>,
     if (expr.value == null) return "nil";
     if (expr.value instanceof String) return "\"" + expr.value.toString() + "\"";
     return expr.value.toString();
+  }
+
+  @Override
+  public String visitLogicalExpr(Expr.Logical expr) {
+    return rpn(expr.operator.lexeme, expr.left, expr.right);
   }
 
   @Override
