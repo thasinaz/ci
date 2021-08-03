@@ -187,7 +187,7 @@ class Parser {
   }
 
   private Expr ternary() {
-    Expr expr = equality();
+    Expr expr = or();
 
     if (match(QUESTION_MARK)) {
       Expr middle = ternary();
