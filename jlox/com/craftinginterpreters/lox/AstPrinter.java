@@ -12,7 +12,7 @@ class AstPrinter implements Expr.Visitor<String>,
 
   @Override
   public String visitBlockStmt(Stmt.Block stmt) {
-    return parenthesize("do", stmt.statements.toArray(new Stmt[stmt.statements.size()]));
+    return parenthesize("let ()", stmt.statements.toArray(new Stmt[stmt.statements.size()]));
   }
 
   @Override
