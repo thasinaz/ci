@@ -45,7 +45,11 @@ class AstRpnConverter implements Expr.Visitor<String>,
   public String visitVarStmt(Stmt.Var stmt) {
     StringBuilder builder = new StringBuilder(stmt.name.lexeme);
     builder.append(" ");
-    builder.append(rpn("define", stmt.initializer));
+    if (stmt.initializer == null) {
+      builder.append("define");
+    } else {
+      builder.append(rpn("define", stmt.initializer));
+    }
 
     return builder.toString();
   }
