@@ -19,6 +19,11 @@ class AstRpnConverter implements Expr.Visitor<String>,
   }
 
   @Override
+  public String visitBreakStmt(Stmt.Break stmt) {
+    return stmt.token.lexeme;
+  }
+
+  @Override
   public String visitExpressionStmt(Stmt.Expression stmt) {
     return convert(stmt.expression);
   }
