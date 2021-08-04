@@ -12,8 +12,8 @@ class AstRpnConverter implements Expr.Visitor<String>,
 
   @Override
   public String visitBlockStmt(Stmt.Block stmt) {
-    StringBuilder builder = new StringBuilder("do ");
-    builder.append(rpn("end", stmt.statements.toArray(new Stmt[stmt.statements.size()])));
+    StringBuilder builder = new StringBuilder("{ ");
+    builder.append(rpn("}", stmt.statements.toArray(new Stmt[stmt.statements.size()])));
 
     return builder.toString();
   }
