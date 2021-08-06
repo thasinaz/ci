@@ -272,7 +272,7 @@ class Parser {
     }
 
     throw error(peek(), "Expect expression.");
-}
+  }
 
   private boolean match(TokenType... types) {
     for (TokenType type : types) {
