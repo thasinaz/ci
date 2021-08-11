@@ -33,7 +33,7 @@ class Interpreter implements Expr.Visitor<Object>,
 
   @Override
   public Void visitBreakStmt(Stmt.Break stmt) {
-    throw new Break(stmt.token, "break must appear inside a loop.");
+    throw new Break();
   }
 
   @Override

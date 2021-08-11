@@ -1,7 +1,7 @@
 package com.craftinginterpreters.lox;
 
-class Break extends RuntimeError{
-  Break(Token token, String message) {
-    super(token, message);
+class Break extends RuntimeException{
+  Break() {
+    super(null, null, false, false);
   }
 }
