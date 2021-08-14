@@ -15,8 +15,16 @@ class Environment {
     this.enclosing = enclosing;
   }
 
-  void define(String name, boolean initialized, Object value) {
+  private void define(String name, boolean initialized, Object value) {
     values.put(name, new Object[]{initialized, value});
+  }
+
+  void define(String name, Object value) {
+    define(name, true, value);
+  }
+
+  void define(String name) {
+    define(name, false, null);
   }
 
   Object get(Token name) {

@@ -69,13 +69,15 @@ class Parser {
   private Stmt varDeclaration() {
     Token name = consume(IDENTIFIER, "Expect variable name.");
 
+    boolean initialized = false;
     Expr initializer = null;
     if (match(EQUAL)) {
+      initialized = true;
       initializer = expression();
     }
 
     consume(SEMICOLON, "Expect ';' after variable declaration.");
-    return new Stmt.Var(name, initializer);
+    return new Stmt.Var(name, initialized, initializer);
   }
 
   private Stmt statement() {
