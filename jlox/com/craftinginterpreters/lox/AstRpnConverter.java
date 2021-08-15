@@ -61,7 +61,11 @@ class AstRpnConverter implements Expr.Visitor<String>,
 
   @Override
   public String visitWhileStmt(Stmt.While stmt) {
-    return rpn("while " + convert(stmt.condition), stmt.body);
+    StringBuilder builder = new StringBuilder(convert(stmt.condition));
+    builder.append(" ");
+    builder.append(rpn("while", stmt.body));
+
+    return builder.toString();
   }
 
   @Override
