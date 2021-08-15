@@ -45,25 +45,20 @@ class Parser {
     }
   }
 
-  private Stmt.Function function(String kind) {
-    Token name = consume(IDENTIFIER, "Expect " + kind + " name.");
-    consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
-    List<Token> parameters = new ArrayList<>();
-    if (!check(RIGHT_PAREN)) {
-      do {
-        if (parameters.size() >= 255) {
-          error(peek(), "Can't have more than 255 parameters.");
-        }
+  private Stmt function(String kind) {
+    Token name = null;
+    Expr.Lambda lambda;
 
-        parameters.add(
-            consume(IDENTIFIER, "Expect parameter name."));
-      } while (match(COMMA));
+    if (check(LEFT_PAREN)) {
+      lambda = lambda("lambda");
+      consume(SEMICOLON, "Expect ';' after expression.");
+      return new Stmt.Expression(lambda);
+    } else {
+      name = consume(IDENTIFIER, "Expect " + kind + " name.");
+      lambda = lambda(kind);
     }
-    consume(RIGHT_PAREN, "Expect ')' after parameters.");
 
-    consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
-    List<Stmt> body = block();
-    return new Stmt.Function(name, parameters, body);
+    return new Stmt.Function(name, lambda);
   }
 
   private Stmt varDeclaration() {
@@ -357,6 +352,10 @@ class Parser {
       return new Expr.Grouping(expr);
     }
 
+    if (match(FUN)) {
+      return lambda("lambda");
+    }
+
     if (match(BANG_EQUAL, EQUAL_EQUAL)) {
       Token operator = previous();
       comparison();
@@ -384,6 +383,26 @@ class Parser {
     throw error(peek(), "Expect expression.");
   }
 
+  private Expr.Lambda lambda(String kind) {
+    consume(LEFT_PAREN, "Expect '(' before parameters.");
+    List<Token> parameters = new ArrayList<>();
+    if (!check(RIGHT_PAREN)) {
+      do {
+        if (parameters.size() >= 255) {
+          error(peek(), "Can't have more than 255 parameters.");
+        }
+
+        parameters.add(
+            consume(IDENTIFIER, "Expect parameter name."));
+      } while (match(COMMA));
+    }
+    consume(RIGHT_PAREN, "Expect ')' after parameters.");
+
+    consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
+    List<Stmt> body = block();
+    return new Expr.Lambda(parameters, body);
+  }
+
   private Expr finishCall(Expr callee) {
     List<Expr> arguments = new ArrayList<>();
     if (!check(RIGHT_PAREN)) {
@@ -391,7 +410,7 @@ class Parser {
         if (arguments.size() >= 255) {
           error(peek(), "Can't have more than 255 arguments.");
         }
-        arguments.add(expression());
+        arguments.add(assignment());
       } while (match(COMMA));
     }
 

@@ -29,6 +29,16 @@ class AstRpnConverter implements Expr.Visitor<String>,
   }
 
   @Override
+  public String visitFunctionStmt(Stmt.Function stmt) {
+    StringBuilder builder = new StringBuilder(stmt.name.lexeme);
+    builder.append(" ");
+    builder.append(convert(stmt.lambda));
+    builder.append(" define");
+
+    return builder.toString();
+  }
+
+  @Override
   public String visitIfStmt(Stmt.If stmt) {
     StringBuilder builder = new StringBuilder(convert(stmt.condition));
     builder.append(" ");
@@ -44,6 +54,14 @@ class AstRpnConverter implements Expr.Visitor<String>,
   @Override
   public String visitPrintStmt(Stmt.Print stmt) {
     return rpn("print", stmt.expression);
+  }
+
+  @Override
+  public String visitReturnStmt(Stmt.Return stmt) {
+    if (stmt.value != null) {
+      return rpn("return", stmt.value);
+    }
+    return "nil return";
   }
 
   @Override
@@ -84,8 +102,30 @@ class AstRpnConverter implements Expr.Visitor<String>,
   }
 
   @Override
+  public String visitCallExpr(Expr.Call expr) {
+    StringBuilder builder = new StringBuilder(convert(expr.callee));
+    builder.append(" ");
+    builder.append(rpn("call", expr.arguments.toArray(new Expr[expr.arguments.size()])));
+
+    return builder.toString();
+  }
+
+  @Override
   public String visitGroupingExpr(Expr.Grouping expr) {
     return rpn("group", expr.expression);
+  }
+
+  @Override
+  public String visitLambdaExpr(Expr.Lambda expr) {
+    StringBuilder builder = new StringBuilder();
+    for (Token param : expr.params) {
+      builder.append(param.lexeme);
+      builder.append(" ");
+    }
+    builder.append(convert(new Stmt.Block(expr.body)));
+    builder.append(" lambda");
+
+    return builder.toString();
   }
 
   @Override

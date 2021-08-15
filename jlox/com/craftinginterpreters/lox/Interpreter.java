@@ -28,6 +28,8 @@ class Interpreter implements Expr.Visitor<Object>,
   void interpret(List<Stmt> statements) {
     try {
       for (Stmt statement : statements) {
+        System.err.println(new AstPrinter().print(statement));
+        System.err.println(new AstRpnConverter().convert(statement));
         execute(statement);
       }
     } catch (RuntimeError error) {
@@ -232,6 +234,11 @@ class Interpreter implements Expr.Visitor<Object>,
   @Override
   public Object visitGroupingExpr(Expr.Grouping expr) {
     return evaluate(expr.expression);
+  }
+
+  @Override
+  public Object visitLambdaExpr(Expr.Lambda expr) {
+    return new LoxLambda(expr, environment);
   }
 
   @Override
