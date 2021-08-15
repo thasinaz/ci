@@ -10,6 +10,7 @@ import java.util.List;
 
 public class Lox {
   private static final Interpreter interpreter = new Interpreter();
+  private static final StringBuilder parseError = new StringBuilder();
   static boolean hadError = false;
   static boolean hadRuntimeError = false;
 
@@ -29,7 +30,10 @@ public class Lox {
     run(new String(bytes, Charset.defaultCharset()));
 
     // Indicate an error in the exit code.
-    if (hadError) System.exit(65);
+    if (hadError) {
+      System.err.print(parseError.toString());
+      System.exit(65);
+    }
     if (hadRuntimeError) System.exit(70);
 }
 
@@ -41,11 +45,16 @@ public class Lox {
       System.out.print("> ");
       String line = reader.readLine();
       if (line == null) break;
-      if (line.contains(";")) {
-        run(line);
-      } else {
+      run(line);
+      if (hadError) {
+        String msg = parseError.toString();
+        hadError = false;
         runExpr(line);
+        if (hadError) {
+          System.err.print(msg);
+        }
       }
+      parseError.setLength(0);
       hadError = false;
     }
   }
@@ -88,8 +97,7 @@ public class Lox {
 
   private static void report(int line, String where,
                              String message) {
-    System.err.println(
-        "[line " + line + "] Error" + where + ": " + message);
+    parseError.append(String.format("[line %d] Error%s: %s\n", line, where, message));
     hadError = true;
   }
 
