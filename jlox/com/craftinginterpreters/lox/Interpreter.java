@@ -28,8 +28,6 @@ class Interpreter implements Expr.Visitor<Object>,
   void interpret(List<Stmt> statements) {
     try {
       for (Stmt statement : statements) {
-        System.err.println(new AstPrinter().print(statement));
-        System.err.println(new AstRpnConverter().convert(statement));
         execute(statement);
       }
     } catch (RuntimeError error) {
