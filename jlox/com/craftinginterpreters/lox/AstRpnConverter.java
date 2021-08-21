@@ -20,7 +20,7 @@ class AstRpnConverter implements Expr.Visitor<String>,
 
   @Override
   public String visitBreakStmt(Stmt.Break stmt) {
-    return stmt.token.lexeme;
+    return stmt.keyword.lexeme;
   }
 
   @Override

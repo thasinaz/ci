@@ -44,7 +44,7 @@ class Environment {
   }
 
   Object getAt(int distance, String name) {
-    return ancestor(distance).values.get(name);
+    return ancestor(distance).values.get(name)[1];
   }
 
   void assign(Token name, Object value) {
@@ -63,7 +63,7 @@ class Environment {
   }
 
   void assignAt(int distance, Token name, Object value) {
-    ancestor(distance).values.put(name.lexeme, value);
+    ancestor(distance).values.put(name.lexeme, new Object[]{true, value});
   }
 
   Environment ancestor(int distance) {

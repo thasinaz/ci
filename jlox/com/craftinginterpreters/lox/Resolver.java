@@ -8,6 +8,7 @@ import java.util.Stack;
 class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   private final Interpreter interpreter;
   private final Stack<Map<String, Boolean>> scopes = new Stack<>();
+  private boolean inLoop = false;
   private FunctionType currentFunction = FunctionType.NONE;
 
   Resolver(Interpreter interpreter) {
@@ -16,7 +17,8 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   private enum FunctionType {
     NONE,
-    FUNCTION
+    FUNCTION,
+    LAMBDA
   }
 
   @Override
@@ -24,6 +26,15 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     beginScope();
     resolve(stmt.statements);
     endScope();
+    return null;
+  }
+
+  @Override
+  public Void visitBreakStmt(Stmt.Break stmt) {
+    if (!inLoop) {
+      Lox.error(stmt.keyword, "Can't break outside of loop.");
+    }
+
     return null;
   }
 
@@ -38,7 +49,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     declare(stmt.name);
     define(stmt.name);
 
-    resolveFunction(stmt, FunctionType.FUNCTION);
+    resolveFunction(stmt.lambda, FunctionType.FUNCTION);
     return null;
   }
 
@@ -81,8 +92,11 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   @Override
   public Void visitWhileStmt(Stmt.While stmt) {
+    boolean isInLoop = inLoop;
     resolve(stmt.condition);
+    inLoop = true;
     resolve(stmt.body);
+    inLoop = isInLoop;
     return null;
   }
 
@@ -118,6 +132,12 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Void visitLambdaExpr(Expr.Lambda expr) {
+    resolveFunction(expr, FunctionType.LAMBDA);
+    return null;
+  }
+
+  @Override
   public Void visitLiteralExpr(Expr.Literal expr) {
     return null;
   }
@@ -125,6 +145,14 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   @Override
   public Void visitLogicalExpr(Expr.Logical expr) {
     resolve(expr.left);
+    resolve(expr.right);
+    return null;
+  }
+
+  @Override
+  public Void visitTernaryExpr(Expr.Ternary expr) {
+    resolve(expr.left);
+    resolve(expr.middle);
     resolve(expr.right);
     return null;
   }
@@ -163,16 +191,16 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   private void resolveFunction(
-      Stmt.Function function, FunctionType type) {
+      Expr.Lambda lambda, FunctionType type) {
     FunctionType enclosingFunction = currentFunction;
     currentFunction = type;
 
     beginScope();
-    for (Token param : function.params) {
+    for (Token param : lambda.params) {
       declare(param);
       define(param);
     }
-    resolve(function.body);
+    resolve(lambda.body);
     endScope();
     currentFunction = enclosingFunction;
   }
