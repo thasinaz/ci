@@ -174,17 +174,16 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   @Override
   public Void visitVariableExpr(Expr.Variable expr) {
-    if (!scopes.isEmpty() &&
-        scopes.peek().get(expr.name) == VariableType.INITIALIZING) {
-      Lox.error(expr.name,
-          "Can't read local variable in its own initializer.");
-    }
-
     int index = resolveLocal(expr, expr.name);
     if (index != -1) {
       Map<Token, VariableType> scope = scopes.get(index);
-      if (scope.get(expr.name) == VariableType.DECLARED) {
-        Lox.error(expr.name, "Can't read uninitialized local variable.");
+      VariableType type = scope.get(expr.name);
+      if (type == VariableType.DECLARED) {
+        Lox.error(expr.name,
+            "Can't read uninitialized local variable.");
+      } else if (type == VariableType.INITIALIZING) {
+        Lox.error(expr.name,
+            "Can't read local variable in its own initializer.");
       }
       scope.put(expr.name, VariableType.USED);
     }
