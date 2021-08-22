@@ -7,13 +7,19 @@ import java.util.Stack;
 
 class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   private final Interpreter interpreter;
-  private final Stack<Map<String, Boolean>> scopes = new Stack<>();
+  private final Stack<Map<Token, VariableType>> scopes = new Stack<>();
   private boolean inLoop = false;
-  private Token variableBeingInitialized = null;
   private FunctionType currentFunction = FunctionType.NONE;
 
   Resolver(Interpreter interpreter) {
     this.interpreter = interpreter;
+  }
+
+  private enum VariableType {
+    DECLARED,
+    INITIALIZING,
+    DEFINED,
+    USED
   }
 
   private enum FunctionType {
@@ -85,10 +91,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   public Void visitVarStmt(Stmt.Var stmt) {
     declare(stmt.name);
     if (stmt.initializer != null) {
-      variableBeingInitialized = stmt.name;
-      resolve(stmt.initializer);
-      define(stmt.name);
-      variableBeingInitialized = null;
+      initialize(stmt.name, stmt.initializer);
     }
     return null;
   }
@@ -171,17 +174,22 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   @Override
   public Void visitVariableExpr(Expr.Variable expr) {
-    if (!scopes.isEmpty() &&
-        scopes.peek().get(expr.name.lexeme) == Boolean.FALSE) {
-      if (expr.name == variableBeingInitialized) {
+    if (!scopes.isEmpty()) {
+      VariableType type = scopes.peek().get(expr.name);
+      if (type == VariableType.INITIALIZING) {
         Lox.error(expr.name,
             "Can't read local variable in its own initializer.");
-      } else {
-        Lox.error(expr.name, "Can't read uninitialized local variable.");
       }
     }
 
-    resolveLocal(expr, expr.name);
+    int index = resolveLocal(expr, expr.name);
+    if (index != -1) {
+      Map<Token, VariableType> scope = scopes.get(index);
+      if (scope.get(expr.name) == VariableType.DECLARED) {
+        Lox.error(expr.name, "Can't read uninitialized local variable.");
+      }
+      scope.put(expr.name, VariableType.USED);
+    }
     return null;
   }
 
@@ -193,7 +201,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   private int resolveLocal(Expr expr, Token name) {
     for (int i = scopes.size() - 1; i >= 0; i--) {
-      if (scopes.get(i).containsKey(name.lexeme)) {
+      if (scopes.get(i).containsKey(name)) {
         int depth = scopes.size() - 1 - i;
         interpreter.resolve(expr, depth);
         return i;
@@ -227,31 +235,53 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   private void beginScope() {
-    scopes.push(new HashMap<String, Boolean>());
+    scopes.push(new HashMap<Token, VariableType>());
   }
 
   private void endScope() {
-    scopes.pop();
+    Map<Token, VariableType> scope = scopes.pop();
+    for (Map.Entry<Token, VariableType> entry : scope.entrySet()) {
+      if (entry.getValue() != VariableType.USED) {
+        Lox.error(entry.getKey(),
+            "Unused local variable.");
+      }
+    }
   }
 
   private void declare(Token name) {
     if (scopes.isEmpty()) return;
 
-    Map<String, Boolean> scope = scopes.peek();
-    if (scope.containsKey(name.lexeme)) {
+    Map<Token, VariableType> scope = scopes.peek();
+    if (scope.containsKey(name)) {
       Lox.error(name,
           "Already a variable with this name in this scope.");
     }
 
-    scope.put(name.lexeme, false);
+    scope.put(name, VariableType.DECLARED);
+  }
+
+  private void initialize(Token name, Expr initializer) {
+    if (!scopes.isEmpty()) {
+      Map<Token, VariableType> scope = scopes.peek();
+      scope.put(name, VariableType.INITIALIZING);
+    }
+
+    resolve(initializer);
+    define(name);
   }
 
   private void define(Token name) {
     if (scopes.isEmpty()) return;
-    scopes.peek().put(name.lexeme, true);
+    Map<Token, VariableType> scope = scopes.peek();
+    if (scope.get(name) != VariableType.USED) {
+      scope.put(name, VariableType.DEFINED);
+    }
   }
 
   private void defineAt(int index, Token name) {
-    scopes.get(index).put(name.lexeme, true);
+    Map<Token, VariableType> scope = scopes.get(index);
+    if (scope.get(name) != VariableType.USED) {
+      scope.put(name, VariableType.DEFINED);
+    }
   }
 }
