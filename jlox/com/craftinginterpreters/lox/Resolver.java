@@ -9,6 +9,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   private final Interpreter interpreter;
   private final Stack<Map<String, Boolean>> scopes = new Stack<>();
   private boolean inLoop = false;
+  private Token variableBeingInitialized = null;
   private FunctionType currentFunction = FunctionType.NONE;
 
   Resolver(Interpreter interpreter) {
@@ -84,9 +85,11 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   public Void visitVarStmt(Stmt.Var stmt) {
     declare(stmt.name);
     if (stmt.initializer != null) {
+      variableBeingInitialized = stmt.name;
       resolve(stmt.initializer);
+      define(stmt.name);
+      variableBeingInitialized = null;
     }
-    define(stmt.name);
     return null;
   }
 
@@ -103,7 +106,10 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   @Override
   public Void visitAssignExpr(Expr.Assign expr) {
     resolve(expr.value);
-    resolveLocal(expr, expr.name);
+    int index = resolveLocal(expr, expr.name);
+    if (index != -1) {
+      defineAt(index, expr.name);
+    }
     return null;
   }
 
@@ -167,8 +173,12 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   public Void visitVariableExpr(Expr.Variable expr) {
     if (!scopes.isEmpty() &&
         scopes.peek().get(expr.name.lexeme) == Boolean.FALSE) {
-      Lox.error(expr.name,
-          "Can't read local variable in its own initializer.");
+      if (expr.name == variableBeingInitialized) {
+        Lox.error(expr.name,
+            "Can't read local variable in its own initializer.");
+      } else {
+        Lox.error(expr.name, "Can't read uninitialized local variable.");
+      }
     }
 
     resolveLocal(expr, expr.name);
@@ -181,13 +191,16 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
   }
 
-  private void resolveLocal(Expr expr, Token name) {
+  private int resolveLocal(Expr expr, Token name) {
     for (int i = scopes.size() - 1; i >= 0; i--) {
       if (scopes.get(i).containsKey(name.lexeme)) {
-        interpreter.resolve(expr, scopes.size() - 1 - i);
-        return;
+        int depth = scopes.size() - 1 - i;
+        interpreter.resolve(expr, depth);
+        return i;
       }
     }
+
+    return -1;
   }
 
   private void resolveFunction(
@@ -236,5 +249,9 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   private void define(Token name) {
     if (scopes.isEmpty()) return;
     scopes.peek().put(name.lexeme, true);
+  }
+
+  private void defineAt(int index, Token name) {
+    scopes.get(index).put(name.lexeme, true);
   }
 }

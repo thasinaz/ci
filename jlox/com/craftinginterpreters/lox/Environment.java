@@ -5,7 +5,7 @@ import java.util.Map;
 
 class Environment {
   final Environment enclosing;
-  private final Map<String, Object[]> values = new HashMap<>();
+  private final Map<String, Object> values = new HashMap<>();
 
   Environment() {
     enclosing = null;
@@ -15,26 +15,13 @@ class Environment {
     this.enclosing = enclosing;
   }
 
-  private void define(String name, boolean initialized, Object value) {
-    values.put(name, new Object[]{initialized, value});
-  }
-
   void define(String name, Object value) {
-    define(name, true, value);
-  }
-
-  void define(String name) {
-    define(name, false, null);
+    values.put(name, value);
   }
 
   Object get(Token name) {
     if (values.containsKey(name.lexeme)) {
-      if ((boolean)values.get(name.lexeme)[0]) {
-        return values.get(name.lexeme)[1];
-      }
-
-      throw new RuntimeError(name,
-          "Uninitialized variable '" + name.lexeme + "'.");
+      return values.get(name.lexeme);
     }
 
     if (enclosing != null) return enclosing.get(name);
@@ -44,12 +31,12 @@ class Environment {
   }
 
   Object getAt(int distance, String name) {
-    return ancestor(distance).values.get(name)[1];
+    return ancestor(distance).values.get(name);
   }
 
   void assign(Token name, Object value) {
     if (values.containsKey(name.lexeme)) {
-      values.put(name.lexeme, new Object[]{true, value});
+      values.put(name.lexeme, value);
       return;
     }
 
@@ -63,7 +50,7 @@ class Environment {
   }
 
   void assignAt(int distance, Token name, Object value) {
-    ancestor(distance).values.put(name.lexeme, new Object[]{true, value});
+    ancestor(distance).values.put(name.lexeme, value);
   }
 
   Environment ancestor(int distance) {
