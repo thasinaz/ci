@@ -7,7 +7,9 @@ import java.util.Stack;
 
 class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   private final Interpreter interpreter;
-  private final Stack<Map<Token, VariableType>> scopes = new Stack<>();
+  private final Stack<Map<Token, VariableStatus>> scopes = new Stack<>();
+  private final Stack<Map<Token, Integer>> slots = new Stack<>();
+  private final Stack<Integer> slotNo = new Stack<>();
   private boolean inLoop = false;
   private FunctionType currentFunction = FunctionType.NONE;
 
@@ -15,7 +17,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     this.interpreter = interpreter;
   }
 
-  private enum VariableType {
+  private enum VariableStatus {
     DECLARED,
     INITIALIZING,
     DEFINED,
@@ -56,6 +58,12 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     declare(stmt.name);
     define(stmt.name);
 
+    if (!slotNo.isEmpty()) {
+      int slot = nextSlotNo();
+      slots.peek().put(stmt.name, slot);
+      interpreter.resolve(stmt.lambda, slot);
+    }
+
     resolveFunction(stmt.lambda, FunctionType.FUNCTION);
     return null;
   }
@@ -91,6 +99,11 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   public Void visitVarStmt(Stmt.Var stmt) {
     declare(stmt.name);
     if (stmt.initializer != null) {
+      if (!slotNo.isEmpty()) {
+        int slot = nextSlotNo();
+        slots.peek().put(stmt.name, slot);
+        interpreter.resolve(stmt.initializer, slot);
+      }
       initialize(stmt.name, stmt.initializer);
     }
     return null;
@@ -176,16 +189,12 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   public Void visitVariableExpr(Expr.Variable expr) {
     int index = resolveLocal(expr, expr.name);
     if (index != -1) {
-      Map<Token, VariableType> scope = scopes.get(index);
-      VariableType type = scope.get(expr.name);
-      if (type == VariableType.DECLARED) {
-        Lox.error(expr.name,
-            "Can't read uninitialized local variable.");
-      } else if (type == VariableType.INITIALIZING) {
+      Map<Token, VariableStatus> scope = scopes.get(index);
+      if (scope.get(expr.name) == VariableStatus.INITIALIZING) {
         Lox.error(expr.name,
             "Can't read local variable in its own initializer.");
       }
-      scope.put(expr.name, VariableType.USED);
+      scope.put(expr.name, VariableStatus.USED);
     }
     return null;
   }
@@ -198,9 +207,17 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   private int resolveLocal(Expr expr, Token name) {
     for (int i = scopes.size() - 1; i >= 0; i--) {
-      if (scopes.get(i).containsKey(name)) {
+      Map<Token, VariableStatus> scope = scopes.get(i);
+      if (scope.containsKey(name)) {
         int depth = scopes.size() - 1 - i;
-        interpreter.resolve(expr, depth);
+        int slot;
+        if (scope.get(name) == VariableStatus.DECLARED) {
+          slot = nextSlotNo(i);
+          slots.get(i).put(name, slot);
+        } else {
+          slot = slots.get(i).get(name);
+        }
+        interpreter.resolve(expr, depth, slot);
         return i;
       }
     }
@@ -217,6 +234,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     for (Token param : lambda.params) {
       declare(param);
       define(param);
+      slots.peek().put(param, nextSlotNo());
     }
     resolve(lambda.body);
     endScope();
@@ -232,35 +250,39 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   private void beginScope() {
-    scopes.push(new HashMap<Token, VariableType>());
+    scopes.push(new HashMap<Token, VariableStatus>());
+    slots.push(new HashMap<Token, Integer>());
+    slotNo.push(0);
   }
 
   private void endScope() {
-    Map<Token, VariableType> scope = scopes.pop();
-    for (Map.Entry<Token, VariableType> entry : scope.entrySet()) {
-      if (entry.getValue() != VariableType.USED) {
+    Map<Token, VariableStatus> scope = scopes.pop();
+    for (Map.Entry<Token, VariableStatus> entry : scope.entrySet()) {
+      if (entry.getValue() != VariableStatus.USED) {
         Lox.error(entry.getKey(),
             "Unused local variable.");
       }
     }
+    slots.pop();
+    slotNo.pop();
   }
 
   private void declare(Token name) {
     if (scopes.isEmpty()) return;
 
-    Map<Token, VariableType> scope = scopes.peek();
+    Map<Token, VariableStatus> scope = scopes.peek();
     if (scope.containsKey(name)) {
       Lox.error(name,
           "Already a variable with this name in this scope.");
     }
 
-    scope.put(name, VariableType.DECLARED);
+    scope.put(name, VariableStatus.DECLARED);
   }
 
   private void initialize(Token name, Expr initializer) {
     if (!scopes.isEmpty()) {
-      Map<Token, VariableType> scope = scopes.peek();
-      scope.put(name, VariableType.INITIALIZING);
+      Map<Token, VariableStatus> scope = scopes.peek();
+      scope.put(name, VariableStatus.INITIALIZING);
     }
 
     resolve(initializer);
@@ -269,16 +291,28 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   private void define(Token name) {
     if (scopes.isEmpty()) return;
-    Map<Token, VariableType> scope = scopes.peek();
-    if (scope.get(name) != VariableType.USED) {
-      scope.put(name, VariableType.DEFINED);
+    Map<Token, VariableStatus> scope = scopes.peek();
+    if (scope.get(name) != VariableStatus.USED) {
+      scope.put(name, VariableStatus.DEFINED);
     }
   }
 
   private void defineAt(int index, Token name) {
-    Map<Token, VariableType> scope = scopes.get(index);
-    if (scope.get(name) != VariableType.USED) {
-      scope.put(name, VariableType.DEFINED);
+    Map<Token, VariableStatus> scope = scopes.get(index);
+    if (scope.get(name) != VariableStatus.USED) {
+      scope.put(name, VariableStatus.DEFINED);
     }
+  }
+
+  private int nextSlotNo() {
+    int slot = slotNo.pop();
+    slotNo.push(slot + 1);
+    return slot;
+  }
+
+  private int nextSlotNo(int index) {
+    int slot = slotNo.get(index);
+    slotNo.set(index, slot + 1);
+    return slot;
   }
 }

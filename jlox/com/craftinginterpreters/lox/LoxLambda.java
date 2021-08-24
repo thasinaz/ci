@@ -24,8 +24,7 @@ class LoxLambda implements LoxCallable {
                      List<Object> arguments) {
     Environment environment = new Environment(closure);
     for (int i = 0; i < lambda.params.size(); i++) {
-      environment.define(lambda.params.get(i).lexeme,
-          arguments.get(i));
+      environment.define(i, arguments.get(i));
     }
 
     try {
