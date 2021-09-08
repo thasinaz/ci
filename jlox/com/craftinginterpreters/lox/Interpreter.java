@@ -399,7 +399,7 @@ class Interpreter implements Expr.Visitor<Object>,
   private Object lookUpVariable(Token name, Expr expr) {
     Integer distance = locals.get(expr);
     if (distance != null) {
-      return environment.getAt(distance, slots.get(expr));
+      return environment.getAt(distance, slots.get(expr), name);
     } else {
       if (globals.containsKey(name.lexeme)) {
         return globals.get(name.lexeme);

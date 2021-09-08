@@ -38,8 +38,8 @@ class Environment {
         "Undefined variable '" + name.lexeme + "'.");
   }
 
-  Object getAt(int distance, int slot) {
-    return ancestor(distance).values.get(slot).value;
+  Object getAt(int distance, int slot, Token name) {
+    return ancestor(distance).get(slot, name);
   }
 
   void assign(int slot, Object value) {

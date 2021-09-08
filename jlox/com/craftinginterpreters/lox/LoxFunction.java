@@ -23,7 +23,7 @@ class LoxFunction extends LoxLambda {
   public Object call(Interpreter interpreter,
                      List<Object> arguments) {
     Object value = super.call(interpreter, arguments);
-    if (isInitializer) return closure.getAt(0, 0);
+    if (isInitializer) return closure.getAt(0, 0, null);
     return value;
   }
 
