@@ -138,7 +138,6 @@ class Parser {
     }
 
     return body;
-  // More here...
   }
 
   private Stmt ifStatement() {
