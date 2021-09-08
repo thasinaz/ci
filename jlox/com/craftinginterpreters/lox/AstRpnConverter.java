@@ -24,6 +24,15 @@ class AstRpnConverter implements Expr.Visitor<String>,
   }
 
   @Override
+  public String visitClassStmt(Stmt.Class stmt) {
+    StringBuilder builder = new StringBuilder(stmt.name.lexeme);
+    builder.append(" ");
+    builder.append(rpn("class", stmt.methods.toArray(new Stmt[stmt.methods.size()])));
+
+    return builder.toString();
+  }
+
+  @Override
   public String visitExpressionStmt(Stmt.Expression stmt) {
     return convert(stmt.expression);
   }
@@ -111,6 +120,16 @@ class AstRpnConverter implements Expr.Visitor<String>,
   }
 
   @Override
+  public String visitGetExpr(Expr.Get expr) {
+    StringBuilder builder = new StringBuilder(convert(expr.object));
+    builder.append(" ");
+    builder.append(expr.name.lexeme);
+    builder.append(" get");
+
+    return builder.toString();
+  }
+
+  @Override
   public String visitGroupingExpr(Expr.Grouping expr) {
     return rpn("group", expr.expression);
   }
@@ -141,8 +160,25 @@ class AstRpnConverter implements Expr.Visitor<String>,
   }
 
   @Override
+  public String visitSetExpr(Expr.Set expr) {
+    StringBuilder builder = new StringBuilder(convert(expr.object));
+    builder.append(" ");
+    builder.append(expr.name.lexeme);
+    builder.append(" ");
+    builder.append(convert(expr.value));
+    builder.append(" set");
+
+    return builder.toString();
+  }
+
+  @Override
   public String visitTernaryExpr(Expr.Ternary expr) {
     return rpn("?:", expr.left, expr.middle, expr.right);
+  }
+
+  @Override
+  public String visitThisExpr(Expr.This expr) {
+    return "this";
   }
 
   @Override

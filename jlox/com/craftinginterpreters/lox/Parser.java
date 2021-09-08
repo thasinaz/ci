@@ -35,7 +35,11 @@ class Parser {
 
   private Stmt declaration() {
     try {
-      if (match(FUN)) return function("function");
+      if (match(CLASS)) return classDeclaration();
+      if (check(FUN) && checkNext(IDENTIFIER)) {
+        advance();
+        return function("function");
+      }
       if (match(VAR)) return varDeclaration();
 
       return statement();
@@ -45,18 +49,26 @@ class Parser {
     }
   }
 
-  private Stmt function(String kind) {
+  private Stmt classDeclaration() {
+    Token name = consume(IDENTIFIER, "Expect class name.");
+    consume(LEFT_BRACE, "Expect '{' before class body.");
+
+    List<Stmt.Function> methods = new ArrayList<>();
+    while (!check(RIGHT_BRACE) && !isAtEnd()) {
+      methods.add(function("method"));
+    }
+
+    consume(RIGHT_BRACE, "Expect '}' after class body.");
+
+    return new Stmt.Class(name, methods);
+  }
+
+  private Stmt.Function function(String kind) {
     Token name = null;
     Expr.Lambda lambda;
 
-    if (check(LEFT_PAREN)) {
-      lambda = lambda("lambda");
-      consume(SEMICOLON, "Expect ';' after expression.");
-      return new Stmt.Expression(lambda);
-    } else {
-      name = consume(IDENTIFIER, "Expect " + kind + " name.");
-      lambda = lambda(kind);
-    }
+    name = consume(IDENTIFIER, "Expect " + kind + " name.");
+    lambda = lambda(kind);
 
     return new Stmt.Function(name, lambda);
   }
@@ -214,6 +226,9 @@ class Parser {
       if (expr instanceof Expr.Variable) {
         Token name = ((Expr.Variable)expr).name;
         return new Expr.Assign(name, value);
+      } else if (expr instanceof Expr.Get) {
+        Expr.Get get = (Expr.Get)expr;
+        return new Expr.Set(get.object, get.name, value);
       }
 
       error(equals, "Invalid assignment target.");
@@ -323,6 +338,10 @@ class Parser {
     while (true) {
       if (match(LEFT_PAREN)) {
         expr = finishCall(expr);
+      } else if (match(DOT)) {
+        Token name = consume(IDENTIFIER,
+            "Expect property name after '.'.");
+        expr = new Expr.Get(expr, name);
       } else {
         break;
       }
@@ -339,6 +358,8 @@ class Parser {
     if (match(NUMBER, STRING)) {
       return new Expr.Literal(previous().literal);
     }
+
+    if (match(THIS)) return new Expr.This(previous());
 
     if (match(IDENTIFIER)) {
       return new Expr.Variable(previous());
@@ -440,6 +461,12 @@ class Parser {
     return peek().type == type;
   }
 
+  private boolean checkNext(TokenType type) {
+    Token next = peekNext();
+    if (next.type == EOF) return false;
+    return next.type == type;
+  }
+
   private Token advance() {
     if (!isAtEnd()) current++;
     return previous();
@@ -451,6 +478,11 @@ class Parser {
 
   private Token peek() {
     return tokens.get(current);
+  }
+
+  private Token peekNext() {
+    if (isAtEnd()) return peek();
+    return tokens.get(current + 1);
   }
 
   private Token previous() {

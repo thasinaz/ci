@@ -6,7 +6,7 @@ class LoxLambda implements LoxCallable {
   private static int nextId = 0;
   private final int id;
   private final Expr.Lambda lambda;
-  private final Environment closure;
+  final Environment closure;
 
   LoxLambda(Expr.Lambda lambda, Environment closure) {
     this.closure = closure;

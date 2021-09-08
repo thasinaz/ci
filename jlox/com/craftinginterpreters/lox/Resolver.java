@@ -12,6 +12,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   private final Stack<Integer> slotNo = new Stack<>();
   private boolean inLoop = false;
   private FunctionType currentFunction = FunctionType.NONE;
+  private ClassType currentClass = ClassType.NONE;
 
   Resolver(Interpreter interpreter) {
     this.interpreter = interpreter;
@@ -26,8 +27,15 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   private enum FunctionType {
     NONE,
+    LAMBDA,
     FUNCTION,
-    LAMBDA
+    INITIALIZER,
+    METHOD
+  }
+
+  private enum ClassType {
+    NONE,
+    CLASS
   }
 
   @Override
@@ -48,6 +56,40 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Void visitClassStmt(Stmt.Class stmt) {
+    ClassType enclosingClass = currentClass;
+    currentClass = ClassType.CLASS;
+
+    declare(stmt.name);
+    define(stmt.name);
+
+    if (!slotNo.isEmpty()) {
+      int slot = nextSlotNo();
+      slots.peek().put(stmt.name, slot);
+      interpreter.resolve(stmt, slot);
+    }
+
+    beginScope();
+    Token thisToken = new Token(TokenType.THIS, "this", 0, 0);
+    scopes.peek().put(thisToken, VariableStatus.USED);
+    slots.peek().put(thisToken, nextSlotNo());
+
+    for (Stmt.Function method : stmt.methods) {
+      FunctionType declaration = FunctionType.METHOD;
+      if (method.name.lexeme.equals("init")) {
+        declaration = FunctionType.INITIALIZER;
+      }
+
+      resolveFunction(method.lambda, declaration);
+    }
+
+    endScope();
+
+    currentClass = enclosingClass;
+    return null;
+  }
+
+  @Override
   public Void visitExpressionStmt(Stmt.Expression stmt) {
     resolve(stmt.expression);
     return null;
@@ -61,7 +103,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     if (!slotNo.isEmpty()) {
       int slot = nextSlotNo();
       slots.peek().put(stmt.name, slot);
-      interpreter.resolve(stmt.lambda, slot);
+      interpreter.resolve(stmt, slot);
     }
 
     resolveFunction(stmt.lambda, FunctionType.FUNCTION);
@@ -89,6 +131,11 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     if (stmt.value != null) {
+      if (currentFunction == FunctionType.INITIALIZER) {
+        Lox.error(stmt.keyword,
+            "Can't return a value from an initializer.");
+      }
+
       resolve(stmt.value);
     }
 
@@ -102,7 +149,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
       if (!slotNo.isEmpty()) {
         int slot = nextSlotNo();
         slots.peek().put(stmt.name, slot);
-        interpreter.resolve(stmt.initializer, slot);
+        interpreter.resolve(stmt, slot);
       }
       initialize(stmt.name, stmt.initializer);
     }
@@ -148,6 +195,12 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Void visitGetExpr(Expr.Get expr) {
+    resolve(expr.object);
+    return null;
+  }
+
+  @Override
   public Void visitGroupingExpr(Expr.Grouping expr) {
     resolve(expr.expression);
     return null;
@@ -180,6 +233,25 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Void visitSetExpr(Expr.Set expr) {
+    resolve(expr.value);
+    resolve(expr.object);
+    return null;
+  }
+
+  @Override
+  public Void visitThisExpr(Expr.This expr) {
+    if (currentClass == ClassType.NONE) {
+      Lox.error(expr.keyword,
+          "Can't use 'this' outside of a class.");
+      return null;
+    }
+
+    resolveLocal(expr, expr.keyword);
+    return null;
+  }
+
+  @Override
   public Void visitUnaryExpr(Expr.Unary expr) {
     resolve(expr.right);
     return null;
@@ -206,8 +278,14 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   private int resolveLocal(Expr expr, Token name) {
+    // System.err.println("find");
+    // System.err.println(name);
     for (int i = scopes.size() - 1; i >= 0; i--) {
       Map<Token, VariableStatus> scope = scopes.get(i);
+      // System.err.println("get");
+      // for (var b : scope.entrySet()) {
+        // System.err.println(b);
+      // }
       if (scope.containsKey(name)) {
         int depth = scopes.size() - 1 - i;
         int slot;
@@ -215,6 +293,10 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
           slot = nextSlotNo(i);
           slots.get(i).put(name, slot);
         } else {
+          // for (var b : slots.get(i).entrySet()) {
+            // System.err.println(b);
+          // }
+          // System.err.println(slots);
           slot = slots.get(i).get(name);
         }
         interpreter.resolve(expr, depth, slot);
@@ -225,8 +307,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     return -1;
   }
 
-  private void resolveFunction(
-      Expr.Lambda lambda, FunctionType type) {
+  private void resolveFunction(Expr.Lambda lambda, FunctionType type) {
     FunctionType enclosingFunction = currentFunction;
     currentFunction = type;
 

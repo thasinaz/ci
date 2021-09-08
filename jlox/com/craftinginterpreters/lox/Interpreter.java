@@ -9,8 +9,8 @@ class Interpreter implements Expr.Visitor<Object>,
                              Stmt.Visitor<Void> {
   final Map<String, Object> globals = new HashMap<>();
   private Environment environment = null;
-  private final Map<Expr, Integer> locals = new HashMap<>();
-  private final Map<Expr, Integer> slots = new HashMap<>();
+  private final Map<Object, Integer> locals = new HashMap<>();
+  private final Map<Object, Integer> slots = new HashMap<>();
 
   Interpreter() {
     globals.put("clock", new LoxCallable() {
@@ -59,6 +59,30 @@ class Interpreter implements Expr.Visitor<Object>,
   }
 
   @Override
+  public Void visitClassStmt(Stmt.Class stmt) {
+    if (environment == null) {
+      globals.put(stmt.name.lexeme, null);
+    } else {
+      environment.define(slots.get(stmt), null);
+    }
+
+    Map<String, LoxFunction> methods = new HashMap<>();
+    for (Stmt.Function method : stmt.methods) {
+      LoxFunction function = new LoxFunction(method, environment, method.name.lexeme.equals("init"));
+      methods.put(method.name.lexeme, function);
+    }
+
+    LoxClass klass = new LoxClass(stmt.name.lexeme, methods);
+
+    if (environment == null) {
+      globals.put(stmt.name.lexeme, klass);
+    } else {
+      environment.define(slots.get(stmt), klass);
+    }
+    return null;
+  }
+
+  @Override
   public Void visitExpressionStmt(Stmt.Expression stmt) {
     evaluate(stmt.expression);
     return null;
@@ -66,11 +90,11 @@ class Interpreter implements Expr.Visitor<Object>,
 
   @Override
   public Void visitFunctionStmt(Stmt.Function stmt) {
-    LoxFunction function = new LoxFunction(stmt, environment);
+    LoxFunction function = new LoxFunction(stmt, environment, false);
     if (environment == null) {
       globals.put(stmt.name.lexeme, function);
     } else {
-      environment.define(slots.get(stmt.lambda), function);
+      environment.define(slots.get(stmt), function);
     }
     return null;
   }
@@ -106,7 +130,7 @@ class Interpreter implements Expr.Visitor<Object>,
     if (stmt.initializer != null) {
       value = evaluate(stmt.initializer);
       if (environment != null) {
-        environment.define(slots.get(stmt.initializer), value);
+        environment.define(slots.get(stmt), value);
       }
     }
     if (environment == null) {
@@ -133,7 +157,7 @@ class Interpreter implements Expr.Visitor<Object>,
 
     Integer distance = locals.get(expr);
     if (distance != null) {
-      environment.assignAt(distance, slots.get(expr), expr.name, value);
+      environment.assignAt(distance, slots.get(expr), value);
     } else {
       if (globals.containsKey(expr.name.lexeme)) {
         globals.put(expr.name.lexeme, value);
@@ -254,6 +278,17 @@ class Interpreter implements Expr.Visitor<Object>,
   }
 
   @Override
+  public Object visitGetExpr(Expr.Get expr) {
+    Object object = evaluate(expr.object);
+    if (object instanceof LoxInstance) {
+      return ((LoxInstance) object).get(expr.name);
+    }
+
+    throw new RuntimeError(expr.name,
+        "Only instances have properties.");
+  }
+
+  @Override
   public Object visitGroupingExpr(Expr.Grouping expr) {
     return evaluate(expr.expression);
   }
@@ -287,6 +322,25 @@ class Interpreter implements Expr.Visitor<Object>,
     Object middle = evaluate(expr.middle);
     Object right = evaluate(expr.right);
     return isTruthy(left) ? middle : right;
+  }
+
+  @Override
+  public Object visitSetExpr(Expr.Set expr) {
+    Object object = evaluate(expr.object);
+
+    if (!(object instanceof LoxInstance)) {
+      throw new RuntimeError(expr.name,
+                             "Only instances have fields.");
+    }
+
+    Object value = evaluate(expr.value);
+    ((LoxInstance)object).set(expr.name, value);
+    return value;
+  }
+
+  @Override
+  public Object visitThisExpr(Expr.This expr) {
+    return lookUpVariable(expr.keyword, expr);
   }
 
   @Override
@@ -333,19 +387,19 @@ class Interpreter implements Expr.Visitor<Object>,
     return expr.accept(this);
   }
 
-  void resolve(Expr expr, int depth, int slot) {
-    locals.put(expr, depth);
-    slots.put(expr, slot);
+  void resolve(Object node, int depth, int slot) {
+    locals.put(node, depth);
+    slots.put(node, slot);
   }
 
-  void resolve(Expr expr, int slot) {
-    slots.put(expr, slot);
+  void resolve(Object node, int slot) {
+    slots.put(node, slot);
   }
 
   private Object lookUpVariable(Token name, Expr expr) {
     Integer distance = locals.get(expr);
     if (distance != null) {
-      return environment.getAt(distance, slots.get(expr), name);
+      return environment.getAt(distance, slots.get(expr));
     } else {
       if (globals.containsKey(name.lexeme)) {
         return globals.get(name.lexeme);
