@@ -2,7 +2,9 @@ package com.craftinginterpreters.lox;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static com.craftinginterpreters.lox.TokenType.*;
 
@@ -55,17 +57,30 @@ class Parser {
 
     List<Stmt.Function> staticMethods = new ArrayList<>();
     List<Stmt.Function> methods = new ArrayList<>();
+    Set<String> staticGetters = new HashSet<>();
+    Set<String> getters = new HashSet<>();
     while (!check(RIGHT_BRACE) && !isAtEnd()) {
+      List<Stmt.Function> target = methods;
+      Set<String> getterTarget = getters;
       if (match(CLASS)) {
-        staticMethods.add(function("method"));
-      } else {
-        methods.add(function("method"));
+        target = staticMethods;
+        getterTarget = staticGetters;
       }
+      Stmt.Function method;
+      if (checkNext(LEFT_BRACE)) {
+        Token getterName = consume(IDENTIFIER, "Expect getter name.");
+        advance();
+        method = new Stmt.Function(getterName, new Expr.Lambda(new ArrayList<>(), block()));
+        getterTarget.add(getterName.lexeme);
+      } else {
+        method = function("method");
+      }
+      target.add(method);
     }
 
     consume(RIGHT_BRACE, "Expect '}' after class body.");
 
-    return new Stmt.Class(name, staticMethods, methods);
+    return new Stmt.Class(name, staticMethods, staticGetters, methods, getters);
   }
 
   private Stmt.Function function(String kind) {

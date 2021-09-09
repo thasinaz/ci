@@ -31,7 +31,7 @@ public class GenerateAst {
     defineAst(outputDir, "Stmt", Arrays.asList(
       "Block      : List<Stmt> statements",
       "Break      : Token keyword",
-      "Class      : Token name, List<Stmt.Function> staticMethods, List<Stmt.Function> methods",
+      "Class      : Token name, List<Stmt.Function> staticMethods, Set<String> staticGetters, List<Stmt.Function> methods, Set<String> getters",
       "Expression : Expr expression",
       "Function   : Token name, Expr.Lambda lambda",
       "If         : Expr condition, Stmt thenBranch, Stmt elseBranch",
@@ -50,6 +50,7 @@ public class GenerateAst {
     writer.println("package com.craftinginterpreters.lox;");
     writer.println();
     writer.println("import java.util.List;");
+    writer.println("import java.util.Set;");
     writer.println();
     writer.println("abstract class " + baseName + " {");
 

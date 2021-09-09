@@ -1,5 +1,6 @@
 package com.craftinginterpreters.lox;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,7 +12,7 @@ class LoxInstance {
     this.klass = klass;
   }
 
-  Object get(Token name) {
+  Object get(Interpreter interpreter, Token name) {
     if (fields.containsKey(name.lexeme)) {
       return fields.get(name.lexeme);
     }
@@ -19,7 +20,9 @@ class LoxInstance {
     if (klass != null) {
       LoxFunction method = klass.findMethod(name.lexeme);
       if (method == null) {
-        method = (LoxFunction)klass.get(name);
+        method = (LoxFunction)klass.get(interpreter, name);
+      } else if (klass.isGetter(name.lexeme)) {
+        return method.bind(this).call(interpreter, new ArrayList<>());
       }
       if (method != null) return method.bind(this);
     }

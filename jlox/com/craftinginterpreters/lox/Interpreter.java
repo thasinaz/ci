@@ -77,7 +77,7 @@ class Interpreter implements Expr.Visitor<Object>,
       methods.put(method.name.lexeme, function);
     }
 
-    LoxClass klass = new LoxClass(stmt.name.lexeme, staticMethods, methods);
+    LoxClass klass = new LoxClass(stmt.name.lexeme, staticMethods, stmt.staticGetters, methods, stmt.getters);
 
     if (environment == null) {
       globals.put(stmt.name.lexeme, klass);
@@ -286,7 +286,7 @@ class Interpreter implements Expr.Visitor<Object>,
   public Object visitGetExpr(Expr.Get expr) {
     Object object = evaluate(expr.object);
     if (object instanceof LoxInstance) {
-      return ((LoxInstance) object).get(expr.name);
+      return ((LoxInstance) object).get(this, expr.name);
     }
 
     throw new RuntimeError(expr.name,

@@ -2,21 +2,25 @@ package com.craftinginterpreters.lox;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 class LoxClass extends LoxInstance implements LoxCallable {
   final String name;
   private final Map<String, LoxFunction> methods;
+  private final Set<String> getters;
 
-  LoxClass(String name, Map<String, LoxFunction> methods) {
+  LoxClass(String name, Map<String, LoxFunction> methods, Set<String> getters) {
     super(null);
     this.name = name;
     this.methods = methods;
+    this.getters = getters;
   }
 
-  LoxClass(String name, Map<String, LoxFunction> staticMethods, Map<String, LoxFunction> methods) {
-    super(new LoxClass("_" + name, staticMethods));
+  LoxClass(String name, Map<String, LoxFunction> staticMethods, Set<String> staticGetters, Map<String, LoxFunction> methods, Set<String> getters) {
+    super(new LoxClass("_" + name, staticMethods, staticGetters));
     this.name = name;
     this.methods = methods;
+    this.getters = getters;
   }
 
   @Override
@@ -37,6 +41,10 @@ class LoxClass extends LoxInstance implements LoxCallable {
     }
 
     return null;
+  }
+
+  boolean isGetter(String name) {
+    return getters.contains(name);
   }
 
   @Override
