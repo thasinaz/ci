@@ -74,6 +74,14 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     scopes.peek().put(thisToken, VariableStatus.USED);
     slots.peek().put(thisToken, nextSlotNo());
 
+    for (Stmt.Function method : stmt.staticMethods) {
+      FunctionType declaration = FunctionType.METHOD;
+      if (method.name.lexeme.equals("init")) {
+        declaration = FunctionType.INITIALIZER;
+      }
+
+      resolveFunction(method.lambda, declaration);
+    }
     for (Stmt.Function method : stmt.methods) {
       FunctionType declaration = FunctionType.METHOD;
       if (method.name.lexeme.equals("init")) {
