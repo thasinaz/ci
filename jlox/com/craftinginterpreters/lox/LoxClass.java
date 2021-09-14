@@ -6,19 +6,22 @@ import java.util.Set;
 
 class LoxClass extends LoxInstance implements LoxCallable {
   final String name;
+  final LoxClass superclass;
   private final Map<String, LoxFunction> methods;
   private final Set<String> getters;
 
   LoxClass(String name, Map<String, LoxFunction> methods, Set<String> getters) {
     super(null);
     this.name = name;
+    this.superclass = null;
     this.methods = methods;
     this.getters = getters;
   }
 
-  LoxClass(String name, Map<String, LoxFunction> staticMethods, Set<String> staticGetters, Map<String, LoxFunction> methods, Set<String> getters) {
+  LoxClass(String name, LoxClass superclass, Map<String, LoxFunction> staticMethods, Set<String> staticGetters, Map<String, LoxFunction> methods, Set<String> getters) {
     super(new LoxClass("_" + name, staticMethods, staticGetters));
     this.name = name;
+    this.superclass = superclass;
     this.methods = methods;
     this.getters = getters;
   }
@@ -38,6 +41,10 @@ class LoxClass extends LoxInstance implements LoxCallable {
   LoxFunction findMethod(String name) {
     if (methods.containsKey(name)) {
       return methods.get(name);
+    }
+
+    if (superclass != null) {
+      return superclass.findMethod(name);
     }
 
     return null;

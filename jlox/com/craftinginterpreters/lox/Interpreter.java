@@ -60,10 +60,24 @@ class Interpreter implements Expr.Visitor<Object>,
 
   @Override
   public Void visitClassStmt(Stmt.Class stmt) {
+    Object superclass = null;
+    if (stmt.superclass != null) {
+      superclass = evaluate(stmt.superclass);
+      if (!(superclass instanceof LoxClass)) {
+        throw new RuntimeError(stmt.superclass.name,
+            "Superclass must be a class.");
+      }
+    }
+
     if (environment == null) {
       globals.put(stmt.name.lexeme, null);
     } else {
       environment.define(slots.get(stmt), null);
+    }
+
+    if (stmt.superclass != null) {
+      environment = new Environment(environment);
+      environment.define(0, superclass);
     }
 
     Map<String, LoxFunction> staticMethods = new HashMap<>();
@@ -77,7 +91,10 @@ class Interpreter implements Expr.Visitor<Object>,
       methods.put(method.name.lexeme, function);
     }
 
-    LoxClass klass = new LoxClass(stmt.name.lexeme, staticMethods, stmt.staticGetters, methods, stmt.getters);
+    LoxClass klass = new LoxClass(stmt.name.lexeme, (LoxClass)superclass, staticMethods, stmt.staticGetters, methods, stmt.getters);
+    if (superclass != null) {
+      environment = environment.enclosing;
+    }
 
     if (environment == null) {
       globals.put(stmt.name.lexeme, klass);
@@ -341,6 +358,25 @@ class Interpreter implements Expr.Visitor<Object>,
     Object value = evaluate(expr.value);
     ((LoxInstance)object).set(expr.name, value);
     return value;
+  }
+
+  @Override
+  public Object visitSuperExpr(Expr.Super expr) {
+    int distance = locals.get(expr);
+    LoxClass superclass = (LoxClass)environment.getAt(
+        distance, slots.get(expr), expr.keyword);
+
+    LoxInstance object = (LoxInstance)environment.getAt(
+        distance - 1, 0, new Token(TokenType.THIS, "this", 0, 0));
+
+    LoxFunction method = superclass.findMethod(expr.method.lexeme);
+
+    if (method == null) {
+      throw new RuntimeError(expr.method,
+          "Undefined property '" + expr.method.lexeme + "'.");
+    }
+
+    return method.bind(object);
   }
 
   @Override

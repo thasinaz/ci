@@ -147,6 +147,16 @@ class AstPrinter implements Expr.Visitor<String>,
   }
 
   @Override
+  public String visitSuperExpr(Expr.Super expr) {
+    StringBuilder builder = new StringBuilder("(get super ");
+
+    builder.append(expr.method.lexeme);
+    builder.append(")");
+
+    return builder.toString();
+  }
+
+  @Override
   public String visitThisExpr(Expr.This expr) {
     return expr.keyword.lexeme;
   }
