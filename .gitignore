@@ -1,3 +1,4 @@
-jlox/build
 jlox/com/craftinginterpreters/lox/Expr.java
 jlox/com/craftinginterpreters/lox/Stmt.java
+build
+.cache
