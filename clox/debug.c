@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "debug.h"
+#include "line.h"
 #include "value.h"
 
 void disassembleChunk(Chunk* chunk, const char* name) {
@@ -28,10 +29,11 @@ static int simpleInstruction(const char* name, int offset) {
 int disassembleInstruction(Chunk* chunk, int offset) {
   printf("%04d ", offset);
   if (offset > 0 &&
-      chunk->lines[offset] == chunk->lines[offset - 1]) {
+      getLine(&chunk->lines, offset) == getLine(&chunk->lines, offset - 1)) {
     printf("   | ");
   } else {
-    printf("%4d ", chunk->lines[offset]);
+    printLine(getLine(&chunk->lines, offset));
+    printf(" ");
   }
 
   uint8_t instruction = chunk->code[offset];
