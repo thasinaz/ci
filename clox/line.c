@@ -37,8 +37,8 @@ void freeLineArray(LineArray* array) {
 }
 
 Line getLine(LineArray* array, int index) {
-  int i = 0;
-  for (int sum = 0; sum < index;
+  int i = -1;
+  for (int sum = 0; sum <= index;
        sum += array->line_count[i]) {
     i++;
   }
