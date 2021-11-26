@@ -23,6 +23,8 @@ void initVM();
 void freeVM();
 InterpretResult interpret(Chunk* chunk);
 
+Value* top();
+
 void push(Value value);
 Value pop();
 

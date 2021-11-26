@@ -18,6 +18,10 @@ void initVM() {
 void freeVM() {
 }
 
+Value* top() {
+  return vm.stackTop;
+}
+
 void push(Value value) {
   *vm.stackTop = value;
   vm.stackTop++;
@@ -34,8 +38,7 @@ static InterpretResult run() {
 #define BINARY_OP(op) \
     do { \
       double b = pop(); \
-      double a = pop(); \
-      push(a op b); \
+      *top() = ((*top()) op b); \
     } while (false)
 
   for (;;) {
@@ -70,7 +73,7 @@ static InterpretResult run() {
       case OP_SUBTRACT: BINARY_OP(-); break;
       case OP_MULTIPLY: BINARY_OP(*); break;
       case OP_DIVIDE:   BINARY_OP(/); break;
-      case OP_NEGATE:   push(-pop()); break;
+      case OP_NEGATE:   *top() = -*top(); break;
       case OP_RETURN: {
         printValue(pop());
         printf("\n");
