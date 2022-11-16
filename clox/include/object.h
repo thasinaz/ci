@@ -22,12 +22,17 @@ struct Obj {
 
 struct ObjString {
   Obj obj;
+  bool ownsChars;
   int length;
-  char chars[];
+  int size;
+  const char* chars;
+  char _chars[];
 };
 
-ObjString* allocateString(int length);
+ObjString* allocateString(int size);
 void freeString(ObjString* string);
+ObjString* takeString(char* chars, int length);
+ObjString* stringLiteral(const char* chars, int length);
 ObjString* copyString(const char* chars, int length);
 void printObject(Value value);
 

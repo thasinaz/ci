@@ -65,9 +65,9 @@ static void concatenate() {
 
   int length = a->length + b->length;
   ObjString* result = allocateString(length);
-  memcpy(result->chars, a->chars, a->length);
-  memcpy(result->chars + a->length, b->chars, b->length);
-  result->chars[length] = '\0';
+  result->length = length;
+  memcpy(result->_chars, a->chars, a->length);
+  memcpy(result->_chars + a->length, b->chars, b->length);
 
   push(OBJ_VAL(result));
 }
