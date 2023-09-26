@@ -55,7 +55,7 @@ ObjString* internString(ObjString* string) {
   if (interned != NULL) return interned;
 
   string->hash = hash;
-  tableSet(&vm.strings, string, NIL_VAL);
+  tableSet(&vm.strings, OBJ_VAL(string), NIL_VAL);
   return string;
 }
 
@@ -73,7 +73,7 @@ ObjString* takeString(char* chars, int length) {
   string->hash = hash;
   string->length = length;
   string->chars = chars;
-  tableSet(&vm.strings, string, NIL_VAL);
+  tableSet(&vm.strings, OBJ_VAL(string), NIL_VAL);
   return string;
 }
 
@@ -87,7 +87,7 @@ ObjString* stringLiteral(const char* chars, int length) {
   string->hash = hash;
   string->length = length;
   string->chars = chars;
-  tableSet(&vm.strings, string, NIL_VAL);
+  tableSet(&vm.strings, OBJ_VAL(string), NIL_VAL);
   return string;
 }
 
@@ -101,7 +101,7 @@ ObjString* copyString(const char* chars, int length) {
   string->hash = hash;
   string->length = length;
   memcpy(string->_chars, chars, length);
-  tableSet(&vm.strings, string, NIL_VAL);
+  tableSet(&vm.strings, OBJ_VAL(string), NIL_VAL);
   return string;
 }
 
