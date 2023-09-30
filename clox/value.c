@@ -46,6 +46,7 @@ uint32_t hashValue(Value value) {
     case VAL_NUMBER: return hashDouble(AS_NUMBER(value));
     case VAL_OBJ: return AS_STRING(value)->hash;
     case VAL_EMPTY: return 0;
+    case VAL_UNDEFINED: return 9;
   }
 }
 
@@ -58,17 +59,19 @@ void printValue(Value value) {
     case VAL_NUMBER: printf("%g", AS_NUMBER(value)); break;
     case VAL_OBJ: printObject(value); break;
     case VAL_EMPTY: printf("<empty>"); break;
+    case VAL_UNDEFINED: printf("<undefined>"); break;
   }
 }
 
 bool valuesEqual(Value a, Value b) {
   if (a.type != b.type) return false;
   switch (a.type) {
-    case VAL_BOOL:   return AS_BOOL(a) == AS_BOOL(b);
-    case VAL_NIL:    return true;
-    case VAL_NUMBER: return AS_NUMBER(a) == AS_NUMBER(b);
-    case VAL_OBJ:    return AS_OBJ(a) == AS_OBJ(b);
-    case VAL_EMPTY:  return true;
+    case VAL_BOOL:      return AS_BOOL(a) == AS_BOOL(b);
+    case VAL_NIL:       return true;
+    case VAL_NUMBER:    return AS_NUMBER(a) == AS_NUMBER(b);
+    case VAL_OBJ:       return AS_OBJ(a) == AS_OBJ(b);
+    case VAL_EMPTY:     return true;
+    case VAL_UNDEFINED: return true;
     default:         return false; // Unreachable.
   }
 }

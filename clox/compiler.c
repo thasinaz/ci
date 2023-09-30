@@ -41,7 +41,6 @@ typedef struct {
 
 Parser parser;
 Chunk* compilingChunk;
-Table stringConstants;
 
 static Chunk* currentChunk() {
   return compilingChunk;
@@ -145,15 +144,18 @@ static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 
 static uint8_t identifierConstant(Token* name) {
-  Value string = OBJ_VAL(stringLiteral(name->start, name->length));
-  Value indexValue;
-  if (tableGet(&stringConstants, string, &indexValue)) {
-    return (uint8_t)AS_NUMBER(indexValue);
+  Value index;
+  Value identifier = OBJ_VAL(stringLiteral(name->start, name->length));
+  if (tableGet(&vm.globalNames, identifier, &index)) {
+    return (uint8_t)AS_NUMBER(index);
   }
 
-  uint8_t index = makeConstant(string);
-  tableSet(&stringConstants, string, NUMBER_VAL((double)index));
-  return index;
+  uint8_t newIndex = (uint8_t)vm.globalValues.count;
+  writeValueArray(&vm.globalValues, UNDEFINED_VAL);
+  writeValueArray(&vm.globalIdentifiers, identifier);
+
+  tableSet(&vm.globalNames, identifier, NUMBER_VAL((double)newIndex));
+  return newIndex;
 }
 
 static void conditional(bool canAssign) {
@@ -395,7 +397,6 @@ bool compile(const char* source, Chunk* chunk) {
 
   parser.hadError = false;
   parser.panicMode = false;
-  initTable(&stringConstants);
 
   advance();
 
@@ -404,6 +405,5 @@ bool compile(const char* source, Chunk* chunk) {
   }
 
   endCompiler();
-  freeTable(&stringConstants);
   return !parser.hadError;
 }
