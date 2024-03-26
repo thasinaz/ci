@@ -5,6 +5,7 @@
 
 typedef struct Obj Obj;
 typedef struct ObjString ObjString;
+typedef struct ObjVector ObjVector;
 
 typedef enum {
   VAL_BOOL,

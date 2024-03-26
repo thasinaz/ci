@@ -46,6 +46,7 @@ typedef struct {
 } Local;
 
 typedef struct {
+  Table localTable;
   Local locals[UINT8_COUNT];
   int localCount;
   int scopeDepth;
@@ -142,6 +143,7 @@ static void emitConstant(Value value) {
 }
 
 static void initCompiler(Compiler* compiler) {
+  initTable(&compiler->localTable);
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
   current = compiler;
@@ -167,6 +169,16 @@ static void endScope() {
          current->locals[current->localCount - 1].depth >
             current->scopeDepth) {
     emitByte(OP_POP);
+    Local *local = &current->locals[current->localCount - 1];
+    Value identifier = OBJ_VAL(stringLiteral(local->name.start, local->name.length));
+    Value value;
+    tableGet(&current->localTable, identifier, &value);
+    ObjVector *vector = AS_VECTOR(value);
+    vector->valueArray.count--;
+    if (vector->valueArray.count == 0) {
+      freeValueArray(&vector->valueArray);
+      tableDelete(&current->localTable, identifier);
+    }
     current->localCount--;
   }
 }
@@ -206,7 +218,10 @@ static bool identifiersEqual(Token* a, Token* b) {
 }
 
 static int resolveLocal(Compiler* compiler, Token* name) {
-  for (int i = compiler->localCount - 1; i >= 0; i--) {
+  Value identifier = OBJ_VAL(stringLiteral(name->start, name->length));
+  Value value;
+  if (tableGet(&current->localTable, identifier, &value)) {
+    int i = AS_NUMBER(AS_VECTOR(value)->valueArray.values[AS_VECTOR(value)->valueArray.count - 1]);
     Local* local = &compiler->locals[i];
     if (identifiersEqual(name, &local->name)) {
       if (local->depth == -1) {
@@ -225,6 +240,15 @@ static void addLocal(Token name) {
     return;
   }
 
+  Value identifier = OBJ_VAL(stringLiteral(name.start, name.length));
+  Value value;
+  if (tableGet(&current->localTable, identifier, &value)) {
+    writeValueArray(&AS_VECTOR(value)->valueArray, NUMBER_VAL((double)current->localCount));
+  } else {
+    ObjVector *vector = allocateVector();
+    writeValueArray(&vector->valueArray, NUMBER_VAL((double)current->localCount));
+    tableSet(&current->localTable, identifier, OBJ_VAL(vector));
+  }
   Local* local = &current->locals[current->localCount++];
   local->name = name;
   local->depth = -1;
@@ -234,13 +258,12 @@ static void declareVariable() {
   if (current->scopeDepth == 0) return;
 
   Token* name = &parser.previous;
-  for (int i = current->localCount - 1; i >= 0; i--) {
+  Value identifier = OBJ_VAL(stringLiteral(name->start, name->length));
+  Value value;
+  if (tableGet(&current->localTable, identifier, &value)) {
+    int i = AS_NUMBER(AS_VECTOR(value)->valueArray.values[AS_VECTOR(value)->valueArray.count - 1]);
     Local* local = &current->locals[i];
-    if (local->depth != -1 && local->depth < current->scopeDepth) {
-      break;
-    }
-
-    if (identifiersEqual(name, &local->name)) {
+    if (local->depth == -1 || local->depth == current->scopeDepth) {
       error("Already a variable with this name in this scope.");
     }
   }

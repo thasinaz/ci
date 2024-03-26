@@ -105,10 +105,27 @@ ObjString* copyString(const char* chars, int length) {
   return string;
 }
 
+ObjVector* allocateVector() {
+  ObjVector* vector = (ObjVector*)allocateObject(sizeof(ObjVector), OBJ_VECTOR);
+  initValueArray(&vector->valueArray);
+  return vector;
+}
+
 void printObject(Value value) {
   switch (OBJ_TYPE(value)) {
     case OBJ_STRING:
       printf("%.*s", AS_STRING(value)->length, AS_CSTRING(value));
+      break;
+    case OBJ_VECTOR:
+      printf("[");
+      if (AS_VECTOR(value)->valueArray.count > 0) {
+        printValue(AS_VECTOR(value)->valueArray.values[0]);
+      }
+      for (int i = 1; i < AS_VECTOR(value)->valueArray.count; i++) {
+        printf(", ");
+        printValue(AS_VECTOR(value)->valueArray.values[i]);
+      }
+      printf("]");
       break;
   }
 }

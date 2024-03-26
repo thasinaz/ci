@@ -21,6 +21,11 @@ static void freeObject(Obj* object) {
       freeString(string);
       break;
     }
+    case OBJ_VECTOR: {
+      ObjVector* vector = (ObjVector*)object;
+      freeValueArray(&vector->valueArray);
+      break;
+    }
   }
 }
 
