@@ -128,17 +128,24 @@ static InterpretResult run() {
       case OP_FALSE: push(BOOL_VAL(false)); break;
       case OP_POP: pop(); break;
       case OP_GET_LOCAL: {
-        uint8_t slot = READ_BYTE();
-        push(vm.stack[slot]);
+        int a = (int)READ_BYTE();
+        int b = (int)READ_BYTE();
+        int c = (int)READ_BYTE();
+        push(vm.stack[c << 16 | b << 8 | a]);
         break;
       }
       case OP_SET_LOCAL: {
-        uint8_t slot = READ_BYTE();
-        vm.stack[slot] = peek(0);
+        int a = (int)READ_BYTE();
+        int b = (int)READ_BYTE();
+        int c = (int)READ_BYTE();
+        vm.stack[c << 16 | b << 8 | a] = peek(0);
         break;
       }
       case OP_GET_GLOBAL: {
-        Value value = vm.globalValues.values[READ_BYTE()];
+        int a = (int)READ_BYTE();
+        int b = (int)READ_BYTE();
+        int c = (int)READ_BYTE();
+        Value value = vm.globalValues.values[c << 16 | b << 8 | a];
         if (IS_UNDEFINED(value)) {
           runtimeError("Undefined variable.");
           return INTERPRET_RUNTIME_ERROR;
@@ -147,11 +154,17 @@ static InterpretResult run() {
         break;
       }
       case OP_DEFINE_GLOBAL: {
-        vm.globalValues.values[READ_BYTE()] = pop();
+        int a = (int)READ_BYTE();
+        int b = (int)READ_BYTE();
+        int c = (int)READ_BYTE();
+        vm.globalValues.values[c << 16 | b << 8 | a] = pop();
         break;
       }
       case OP_SET_GLOBAL: {
-        uint8_t index = READ_BYTE();
+        int a = (int)READ_BYTE();
+        int b = (int)READ_BYTE();
+        int c = (int)READ_BYTE();
+        int index = c << 16 | b << 8 | a;
         if (IS_UNDEFINED(vm.globalValues.values[index])) {
           runtimeError("Undefined variable.");
           return INTERPRET_RUNTIME_ERROR;
