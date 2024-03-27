@@ -136,7 +136,14 @@ static TokenType identifierType() {
         }
       }
       break;
-    case 'v': return checkKeyword(1, 2, "ar", TOKEN_VAR);
+    case 'v':
+      if (scanner.current - scanner.start > 2) {
+        switch (scanner.start[2]) {
+          case 'l': return checkKeyword(1, 2, "al", TOKEN_VAL);
+          case 'r': return checkKeyword(1, 2, "ar", TOKEN_VAR);
+        }
+      }
+      break;
     case 'w': return checkKeyword(1, 4, "hile", TOKEN_WHILE);
   }
 

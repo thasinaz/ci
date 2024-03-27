@@ -43,6 +43,7 @@ typedef struct {
 typedef struct {
   Token name;
   int depth;
+  bool mutable;
 } Local;
 
 typedef struct {
@@ -328,6 +329,10 @@ static void namedVariable(Token name, bool canAssign) {
   }
 
   if (canAssign && match(TOKEN_EQUAL)) {
+    if (arg != -1 && !current->locals[arg].mutable) {
+      error("Cannot assign to single-assignment variable.");
+    }
+
     expression();
     emitBytes(setOp, (uint8_t)arg);
   } else {
@@ -392,6 +397,7 @@ ParseRule rules[] = {
   [TOKEN_SUPER]         = {NULL,     NULL,        PREC_NONE},
   [TOKEN_THIS]          = {NULL,     NULL,        PREC_NONE},
   [TOKEN_TRUE]          = {literal,  NULL,        PREC_NONE},
+  [TOKEN_VAL]           = {NULL,     NULL,        PREC_NONE},
   [TOKEN_VAR]           = {NULL,     NULL,        PREC_NONE},
   [TOKEN_WHILE]         = {NULL,     NULL,        PREC_NONE},
   [TOKEN_ERROR]         = {NULL,     NULL,        PREC_NONE},
@@ -434,9 +440,10 @@ static void markInitialized() {
       current->scopeDepth;
 }
 
-static void defineVariable(uint8_t global) {
+static void defineVariable(uint8_t global, bool mutable) {
   if (current->scopeDepth > 0) {
     markInitialized();
+    current->locals[current->localCount - 1].mutable = mutable;
     return;
   }
 
@@ -459,7 +466,7 @@ static void block() {
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
-static void varDeclaration() {
+static void varDeclaration(bool mutable) {
   uint8_t global = parseVariable("Expect variable name.");
 
   if (match(TOKEN_EQUAL)) {
@@ -470,7 +477,7 @@ static void varDeclaration() {
   consume(TOKEN_SEMICOLON,
           "Expect ';' after variable declaration.");
 
-  defineVariable(global);
+  defineVariable(global, mutable);
 }
 
 static void expressionStatement() {
@@ -493,6 +500,7 @@ static void synchronize() {
     switch (parser.current.type) {
       case TOKEN_CLASS:
       case TOKEN_FUN:
+      case TOKEN_VAL:
       case TOKEN_VAR:
       case TOKEN_FOR:
       case TOKEN_IF:
@@ -510,8 +518,10 @@ static void synchronize() {
 }
 
 static void declaration() {
-  if (match(TOKEN_VAR)) {
-    varDeclaration();
+  if (match(TOKEN_VAL)) {
+    varDeclaration(false);
+  } else if (match(TOKEN_VAR)) {
+    varDeclaration(true);
   } else {
     statement();
   }
