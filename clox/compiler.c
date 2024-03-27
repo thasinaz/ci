@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include "compiler.h"
+#include "memory.h"
 #include "scanner.h"
 
 #ifdef DEBUG_PRINT_CODE
@@ -48,7 +49,8 @@ typedef struct {
 
 typedef struct {
   Table localTable;
-  Local locals[UINT8_COUNT];
+  Local *locals;
+  int localCapacity;
   int localCount;
   int scopeDepth;
 } Compiler;
@@ -125,6 +127,13 @@ static void emitBytes(uint8_t byte1, uint8_t byte2) {
   emitByte(byte2);
 }
 
+static void emitLongInstruction(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t byte4) {
+  emitByte(byte1);
+  emitByte(byte2);
+  emitByte(byte3);
+  emitByte(byte4);
+}
+
 static void emitReturn() {
   emitByte(OP_RETURN);
 }
@@ -135,6 +144,8 @@ static void emitConstant(Value value) {
 
 static void initCompiler(Compiler* compiler) {
   initTable(&compiler->localTable);
+  compiler->locals = NULL;
+  compiler->localCapacity = 0;
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
   current = compiler;
@@ -180,14 +191,14 @@ static void declaration();
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 
-static uint8_t identifierConstant(Token* name) {
+static int identifierConstant(Token* name) {
   Value index;
   Value identifier = OBJ_VAL(stringLiteral(name->start, name->length));
   if (tableGet(&vm.globalNames, identifier, &index)) {
-    return (uint8_t)AS_NUMBER(index);
+    return (int)AS_NUMBER(index);
   }
 
-  uint8_t newIndex = (uint8_t)vm.globalValues.count;
+  int newIndex = vm.globalValues.count;
   writeValueArray(&vm.globalValues, UNDEFINED_VAL);
   writeValueArray(&vm.globalIdentifiers, identifier);
 
@@ -226,11 +237,6 @@ static int resolveLocal(Compiler* compiler, Token* name) {
 }
 
 static void addLocal(Token name) {
-  if (current->localCount == UINT8_COUNT) {
-    error("Too many local variables in function.");
-    return;
-  }
-
   Value identifier = OBJ_VAL(stringLiteral(name.start, name.length));
   Value value;
   if (tableGet(&current->localTable, identifier, &value)) {
@@ -239,6 +245,13 @@ static void addLocal(Token name) {
     ObjVector *vector = allocateVector();
     writeValueArray(&vector->valueArray, NUMBER_VAL((double)current->localCount));
     tableSet(&current->localTable, identifier, OBJ_VAL(vector));
+  }
+
+  if (current->localCapacity < current->localCount + 1) {
+    int oldCapacity = current->localCapacity;
+    current->localCapacity = GROW_CAPACITY(oldCapacity);
+    current->locals = GROW_ARRAY(Local, current->locals,
+                                 oldCapacity, current->localCapacity);
   }
   Local* local = &current->locals[current->localCount++];
   local->name = name;
@@ -324,9 +337,9 @@ static void namedVariable(Token name, bool canAssign) {
     }
 
     expression();
-    emitBytes(setOp, (uint8_t)arg);
+    emitLongInstruction(setOp, arg & 0xff, arg >> 8 & 0xff, arg >> 16 & 0xff);
   } else {
-    emitBytes(getOp, (uint8_t)arg);
+    emitLongInstruction(getOp, arg & 0xff, arg >> 8 & 0xff, arg >> 16 & 0xff);
   }
 }
 
@@ -416,7 +429,7 @@ static void parsePrecedence(Precedence precedence) {
   }
 }
 
-static uint8_t parseVariable(const char* errorMessage) {
+static int parseVariable(const char* errorMessage) {
   consume(TOKEN_IDENTIFIER, errorMessage);
 
   declareVariable();
@@ -430,14 +443,14 @@ static void markInitialized() {
       current->scopeDepth;
 }
 
-static void defineVariable(uint8_t global, bool mutable) {
+static void defineVariable(int global, bool mutable) {
   if (current->scopeDepth > 0) {
     markInitialized();
     current->locals[current->localCount - 1].mutable = mutable;
     return;
   }
 
-  emitBytes(OP_DEFINE_GLOBAL, global);
+  emitLongInstruction(OP_DEFINE_GLOBAL, global & 0xff, global >> 8 & 0xff, global >> 16 & 0xff);
 }
 
 static ParseRule* getRule(TokenType type) {
@@ -457,7 +470,7 @@ static void block() {
 }
 
 static void varDeclaration(bool mutable) {
-  uint8_t global = parseVariable("Expect variable name.");
+  int global = parseVariable("Expect variable name.");
 
   if (match(TOKEN_EQUAL)) {
     expression();

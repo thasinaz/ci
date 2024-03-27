@@ -15,11 +15,12 @@ void disassembleChunk(Chunk* chunk, const char* name) {
 
 static int identifierInstruction(const char* name, Chunk* chunk,
                                  int offset) {
-  uint8_t constant = chunk->code[offset + 1];
-  printf("%-16s %4d '", name, constant);
-  printValue(vm.globalIdentifiers.values[constant]);
+  uint8_t constant[3] = {chunk->code[offset + 1], chunk->code[offset + 2], chunk->code[offset + 3]};
+  printf("%-16s %4d %4d %4d '", name, constant[0], constant[1], constant[2]);
+  int index = (int)constant[2] << 16 | (int)constant[1] << 8 | (int)constant[0];
+  printValue(vm.globalIdentifiers.values[index]);
   printf("'\n");
-  return offset + 2;
+  return offset + 4;
 }
 
 static int constantInstruction(const char* name, Chunk* chunk,
@@ -46,11 +47,11 @@ static int simpleInstruction(const char* name, int offset) {
   return offset + 1;
 }
 
-static int byteInstruction(const char* name, Chunk* chunk,
+static int longInstruction(const char* name, Chunk* chunk,
                            int offset) {
-  uint8_t slot = chunk->code[offset + 1];
-  printf("%-16s %4d\n", name, slot);
-  return offset + 2;
+  uint8_t slot[3] = {chunk->code[offset + 1], chunk->code[offset + 2], chunk->code[offset + 3]};
+  printf("%-16s %4d %4d %4d\n", name, slot[0], slot[1], slot[2]);
+  return offset + 4;
 }
 
 int disassembleInstruction(Chunk* chunk, int offset) {
@@ -78,9 +79,9 @@ int disassembleInstruction(Chunk* chunk, int offset) {
     case OP_POP:
       return simpleInstruction("OP_POP", offset);
     case OP_GET_LOCAL:
-      return byteInstruction("OP_GET_LOCAL", chunk, offset);
+      return longInstruction("OP_GET_LOCAL", chunk, offset);
     case OP_SET_LOCAL:
-      return byteInstruction("OP_SET_LOCAL", chunk, offset);
+      return longInstruction("OP_SET_LOCAL", chunk, offset);
     case OP_GET_GLOBAL:
       return identifierInstruction("OP_GET_GLOBAL", chunk, offset);
     case OP_DEFINE_GLOBAL:
