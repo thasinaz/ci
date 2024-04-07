@@ -48,11 +48,20 @@ typedef struct {
 } Local;
 
 typedef struct {
+  int scopeDepth;
+  int start;
+} Loop;
+
+typedef struct {
   Table localTable;
   Local *locals;
   int localCapacity;
   int localCount;
   int scopeDepth;
+
+  Loop *loops;
+  int loopCapacity;
+  int loopCount;
 } Compiler;
 
 Parser parser;
@@ -177,6 +186,9 @@ static void initCompiler(Compiler* compiler) {
   compiler->localCapacity = 0;
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
+  compiler->loops = NULL;
+  compiler->loopCapacity = 0;
+  compiler->loopCount = 0;
   current = compiler;
 }
 
@@ -187,6 +199,7 @@ static void endCompiler() {
     disassembleChunk(currentChunk(), "code");
   }
 #endif
+  FREE_ARRAY(Loop, current->loops, current->loopCapacity);
   FREE_ARRAY(Local, current->locals, current->localCapacity);
   freeTable(&current->localTable);
   initCompiler(current);
@@ -215,6 +228,30 @@ static void endScope() {
     }
     current->localCount--;
   }
+}
+
+static void beginLoop(int loopStart) {
+  if (current->loopCapacity < current->loopCount + 1) {
+    int oldCapacity = current->loopCapacity;
+    current->loopCapacity = GROW_CAPACITY(oldCapacity);
+    current->loops = GROW_ARRAY(Loop, current->loops,
+                                 oldCapacity, current->loopCapacity);
+  }
+  Loop* loop = &current->loops[current->loopCount++];
+  loop->start = loopStart;
+  loop->scopeDepth = current->scopeDepth;
+}
+
+static void dropLoopScope() {
+  for (int localCount = current->localCount;
+       localCount > 0 && current->locals[localCount - 1].depth > current->loops[current->loopCount - 1].scopeDepth;
+       localCount--) {
+    emitByte(OP_POP);
+  }
+}
+
+static void endLoop() {
+  current->loopCount--;
 }
 
 static void expression();
@@ -541,6 +578,16 @@ static void expressionStatement() {
   emitByte(OP_POP);
 }
 
+static void continueStatement() {
+  if (current->loopCount == 0) {
+    error("Continue statement not enclosed in a loop.");
+  }
+  consume(TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
+
+  dropLoopScope();
+  emitLoop(current->loops[current->loopCount - 1].start);
+}
+
 static void forStatement() {
   beginScope();
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
@@ -577,6 +624,8 @@ static void forStatement() {
     patchJump(bodyJump);
   }
 
+  beginLoop(loopStart);
+
   statement();
   emitLoop(loopStart);
 
@@ -584,6 +633,8 @@ static void forStatement() {
     patchJump(exitJump);
     emitByte(OP_POP); // Condition.
   }
+
+  endLoop();
 
   endScope();
 }
@@ -678,11 +729,16 @@ static void whileStatement() {
 
   int exitJump = emitJump(OP_JUMP_IF_FALSE);
   emitByte(OP_POP);
+
+  beginLoop(loopStart);
+
   statement();
   emitLoop(loopStart);
 
   patchJump(exitJump);
   emitByte(OP_POP);
+
+  endLoop();
 }
 
 static void synchronize() {
@@ -726,6 +782,8 @@ static void declaration() {
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
+  } else if (match(TOKEN_CONTINUE)) {
+    continueStatement();
   } else if (match(TOKEN_FOR)) {
     forStatement();
   } else if (match(TOKEN_IF)) {
