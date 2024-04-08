@@ -187,6 +187,9 @@ static void endCompiler() {
     disassembleChunk(currentChunk(), "code");
   }
 #endif
+  FREE_ARRAY(Local, current->locals, current->localCapacity);
+  freeTable(&current->localTable);
+  initCompiler(current);
 }
 
 static void beginScope() {
