@@ -46,7 +46,7 @@ void freeVM() {
 }
 
 Value* top() {
-  return vm.stackTop;
+  return vm.stackTop - 1;
 }
 
 void push(Value value) {
@@ -94,7 +94,7 @@ static InterpretResult run() {
         return INTERPRET_RUNTIME_ERROR; \
       } \
       double b = AS_NUMBER(pop()); \
-      *top() = valueType((AS_NUMBER(*top()) op b)); \
+      *top() = valueType((AS_NUMBER(peek(0)) op b)); \
     } while (false)
 
   for (;;) {
