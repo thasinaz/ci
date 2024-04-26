@@ -2,12 +2,16 @@
 
 #include "debug.h"
 #include "line.h"
+#include "object.h"
 #include "value.h"
 #include "vm.h"
 
-void disassembleChunk(Chunk* chunk, const char* name) {
-  printf("== %s ==\n", name);
+void disassembleFunction(ObjFunction* function) {
+  function->name != NULL
+      ? printf("== %.*s ==\n", function->name->length, function->name->chars)
+      : printf("== %s ==\n",  "<script>");
 
+  Chunk* chunk = &function->chunk;
   for (int offset = 0; offset < chunk->count;) {
     offset = disassembleInstruction(chunk, offset);
   }
@@ -45,6 +49,13 @@ static int constantLongInstruction(const char* name, Chunk* chunk,
 static int simpleInstruction(const char* name, int offset) {
   printf("%s\n", name);
   return offset + 1;
+}
+
+static int byteInstruction(const char* name, Chunk* chunk,
+                           int offset) {
+  uint8_t slot = chunk->code[offset + 1];
+  printf("%-16s %4d\n", name, slot);
+  return offset + 2;
 }
 
 static int longInstruction(const char* name, Chunk* chunk,
@@ -124,6 +135,8 @@ int disassembleInstruction(Chunk* chunk, int offset) {
       return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
     case OP_LOOP:
       return jumpInstruction("OP_LOOP", -1, chunk, offset);
+    case OP_CALL:
+      return byteInstruction("OP_CALL", chunk, offset);
     case OP_RETURN:
       return simpleInstruction("OP_RETURN", offset);
     default:

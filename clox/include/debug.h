@@ -2,8 +2,9 @@
 #define clox_debug_h
 
 #include "chunk.h"
+#include "object.h"
 
-void disassembleChunk(Chunk* chunk, const char* name);
+void disassembleFunction(ObjFunction* function);
 int disassembleInstruction(Chunk* chunk, int offset);
 
 #endif
