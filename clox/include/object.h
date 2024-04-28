@@ -13,8 +13,7 @@
 #define IS_VECTOR(value)       isObjType(value, OBJ_VECTOR)
 
 #define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
-#define AS_NATIVE(value) \
-    (((ObjNative*)AS_OBJ(value))->function)
+#define AS_NATIVE(value)       ((ObjNative*)AS_OBJ(value))
 #define AS_STRING(value)       ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value)      (((ObjString*)AS_OBJ(value))->chars)
 #define AS_VECTOR(value)       ((ObjVector*)AS_OBJ(value))
@@ -42,6 +41,7 @@ typedef Value (*NativeFn)(int argCount, Value* args);
 
 typedef struct {
   Obj obj;
+  int arity;
   NativeFn function;
 } ObjNative;
 
@@ -56,7 +56,7 @@ struct ObjString {
 };
 
 ObjFunction* newFunction();
-ObjNative* newNative(NativeFn function);
+ObjNative* newNative(NativeFn function, int arity);
 ObjString* allocateString(int size);
 void freeString(ObjString* string);
 ObjString* internString(ObjString* string);
