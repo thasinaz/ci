@@ -12,8 +12,14 @@
 
 VM vm;
 
-static Value clockNative(int argCount, Value* args) {
-  return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+static bool clockNative(int argCount, Value* args) {
+  args[-1] = NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+  return true;
+}
+
+static bool errNative(int argCount, Value* args) {
+  args[-1] = OBJ_VAL(stringLiteral("Error!", 6));
+  return false;
 }
 
 static void resetStack() {
@@ -64,6 +70,7 @@ void initVM() {
   initTable(&vm.strings);
 
   defineNative("clock", clockNative, 0);
+  defineNative("err", errNative, 0);
 }
 
 void freeVM() {
@@ -123,9 +130,13 @@ static bool callValue(Value callee, int argCount) {
               native->arity, argCount);
           return false;
         }
-        Value result = native->function(argCount, vm.stackTop - argCount);
-        vm.stackTop -= argCount + 1;
-        push(result);
+        if (!native->function(argCount, vm.stackTop - argCount)) {
+          runtimeError("%*s",
+                       AS_STRING(vm.stackTop[-argCount - 1])->length,
+                       AS_CSTRING(vm.stackTop[-argCount - 1]));
+          return false;
+        }
+        vm.stackTop -= argCount;
         return true;
       }
       default:
