@@ -109,6 +109,10 @@ int disassembleInstruction(Chunk* chunk, int offset) {
                                  offset);
     case OP_SET_GLOBAL:
       return identifierInstruction("OP_SET_GLOBAL", chunk, offset);
+    case OP_GET_UPVALUE:
+      return longInstruction("OP_GET_UPVALUE", chunk, offset);
+    case OP_SET_UPVALUE:
+      return longInstruction("OP_SET_UPVALUE", chunk, offset);
     case OP_EQUAL:
       return simpleInstruction("OP_EQUAL", offset);
     case OP_GREATER:
@@ -137,6 +141,26 @@ int disassembleInstruction(Chunk* chunk, int offset) {
       return jumpInstruction("OP_LOOP", -1, chunk, offset);
     case OP_CALL:
       return byteInstruction("OP_CALL", chunk, offset);
+    case OP_CLOSURE: {
+      uint8_t constant[3] = {chunk->code[offset + 1], chunk->code[offset + 2], chunk->code[offset + 3]};
+      offset += 4;
+      printf("%-16s %4d %4d %4d '", "OP_CLOSURE", constant[0], constant[1], constant[2]);
+      int index = (int)constant[2] << 16 | (int)constant[1] << 8 | (int)constant[0];
+      printValue(chunk->constants.values[index]);
+      printf("\n");
+
+      ObjFunction* function = AS_FUNCTION(
+          chunk->constants.values[index]);
+      for (int j = 0; j < function->upvalueCount; j++) {
+        int isLocal = chunk->code[offset++];
+        int index = chunk->code[offset++];
+        printf("%04d      |                     %s %d\n",
+               offset - 2, isLocal ? "local" : "upvalue", index);
+      }
+      return offset;
+    }
+    case OP_CLOSE_UPVALUE:
+      return simpleInstruction("OP_CLOSE_UPVALUE", offset);
     case OP_RETURN:
       return simpleInstruction("OP_RETURN", offset);
     default:
