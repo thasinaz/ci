@@ -717,6 +717,12 @@ static void function(FunctionType type) {
   block();
 
   ObjFunction* function = endCompiler();
+
+  if (function->upvalueCount == 0) {
+    emitConstant(OBJ_VAL(function));
+    return;
+  }
+
   int arg = addConstant(currentChunk(), OBJ_VAL(function));
   emitLongInstruction(OP_CLOSURE, arg & 0xff, arg >> 8 & 0xff, arg >> 16 & 0xff);
 

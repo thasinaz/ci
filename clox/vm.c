@@ -37,7 +37,7 @@ static void runtimeError(const char* format, ...) {
 
   for (int i = vm.frameCount - 1; i >= 0; i--) {
     CallFrame* frame = &vm.frames[i];
-    ObjFunction* function = frame->closure->function;
+    ObjFunction* function = frame->function;
     size_t instruction = frame->ip - function->chunk.code - 1;
     fprintf(stderr, "[line %d] in ", getLine(&function->chunk.lines,
                                              instruction));
@@ -100,7 +100,7 @@ static Value peek(int distance) {
   return vm.stackTop[-1 - distance];
 }
 
-static bool call(ObjClosure* closure, int argCount) {
+static bool callClosure(ObjClosure* closure, int argCount) {
   if (argCount != closure->function->arity) {
     runtimeError("Expected %d arguments but got %d.",
         closure->function->arity, argCount);
@@ -114,7 +114,28 @@ static bool call(ObjClosure* closure, int argCount) {
 
   CallFrame* frame = &vm.frames[vm.frameCount++];
   frame->closure = closure;
+  frame->function = closure->function;
   frame->ip = closure->function->chunk.code;
+  frame->slots = vm.stackTop - argCount - 1;
+  return true;
+}
+
+static bool callFunction(ObjFunction* function, int argCount) {
+  if (argCount != function->arity) {
+    runtimeError("Expected %d arguments but got %d.",
+        function->arity, argCount);
+    return false;
+  }
+
+  if (vm.frameCount == FRAMES_MAX) {
+    runtimeError("Stack overflow.");
+    return false;
+  }
+
+  CallFrame* frame = &vm.frames[vm.frameCount++];
+  frame->closure = NULL;
+  frame->function = function;
+  frame->ip = function->chunk.code;
   frame->slots = vm.stackTop - argCount - 1;
   return true;
 }
@@ -123,7 +144,9 @@ static bool callValue(Value callee, int argCount) {
   if (IS_OBJ(callee)) {
     switch (OBJ_TYPE(callee)) {
       case OBJ_CLOSURE:
-        return call(AS_CLOSURE(callee), argCount);
+        return callClosure(AS_CLOSURE(callee), argCount);
+      case OBJ_FUNCTION:
+        return callFunction(AS_FUNCTION(callee), argCount);
       case OBJ_NATIVE: {
         ObjNative *native = AS_NATIVE(callee);
         if (argCount != native->arity) {
@@ -215,7 +238,7 @@ static InterpretResult run() {
     (uint16_t)((ip[-2] << 8) | ip[-1]))
 
 #define READ_CONSTANT() \
-    (frame->closure->function->chunk.constants.values[READ_BYTE()])
+    (frame->function->chunk.constants.values[READ_BYTE()])
 
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op) \
@@ -237,8 +260,8 @@ static InterpretResult run() {
       printf(" ]");
     }
     printf("\n");
-    disassembleInstruction(&frame->closure->function->chunk,
-                           (int)(ip - frame->closure->function->chunk.code));
+    disassembleInstruction(&frame->function->chunk,
+                           (int)(ip - frame->function->chunk.code));
 #endif
 
     uint8_t instruction;
@@ -252,7 +275,7 @@ static InterpretResult run() {
         int a = (int)READ_BYTE();
         int b = (int)READ_BYTE();
         int c = (int)READ_BYTE();
-        Value constant = frame->closure->function->chunk.constants.values[c << 16 | b << 8 | a];
+        Value constant = frame->function->chunk.constants.values[c << 16 | b << 8 | a];
         push(constant);
         break;
       }
@@ -390,7 +413,7 @@ static InterpretResult run() {
         int a = (int)READ_BYTE();
         int b = (int)READ_BYTE();
         int c = (int)READ_BYTE();
-        ObjFunction* function = AS_FUNCTION(frame->closure->function->chunk.constants.values[c << 16 | b << 8 | a]);
+        ObjFunction* function = AS_FUNCTION(frame->function->chunk.constants.values[c << 16 | b << 8 | a]);
         ObjClosure* closure = newClosure(function);
         push(OBJ_VAL(closure));
         for (int i = 0; i < closure->upvalueCount; i++) {
@@ -438,10 +461,7 @@ InterpretResult interpret(const char* source) {
   if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
   push(OBJ_VAL(function));
-  ObjClosure* closure = newClosure(function);
-  pop();
-  push(OBJ_VAL(closure));
-  call(closure, 0);
+  callFunction(function, 0);
 
   return run();
 }
