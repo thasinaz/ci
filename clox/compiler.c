@@ -51,6 +51,7 @@ typedef struct {
 typedef struct {
   int scopeDepth;
   int start;
+  int varIndex;
 } Loop;
 
 typedef struct {
@@ -274,7 +275,7 @@ static void endScope() {
   }
 }
 
-static void beginLoop(int loopStart) {
+static void beginLoop(int loopStart, int varIndex) {
   if (current->loopCapacity < current->loopCount + 1) {
     int oldCapacity = current->loopCapacity;
     current->loopCapacity = GROW_CAPACITY(oldCapacity);
@@ -282,14 +283,20 @@ static void beginLoop(int loopStart) {
                                  oldCapacity, current->loopCapacity);
   }
   Loop* loop = &current->loops[current->loopCount++];
+  loop->varIndex = varIndex;
   loop->start = loopStart;
   loop->scopeDepth = current->scopeDepth;
 }
 
 static void dropLoopScope() {
+  int varIndex = current->loops[current->loopCount - 1].varIndex;
   for (int localCount = current->localCount;
        localCount > 0 && current->locals[localCount - 1].depth > current->loops[current->loopCount - 1].scopeDepth;
        localCount--) {
+    if (varIndex != -1 && varIndex + 2 == localCount) {
+      emitLongInstruction(OP_SET_LOCAL, varIndex & 0xff, varIndex >> 8 & 0xff, varIndex >> 16 & 0xff);
+    }
+
     if (current->locals[localCount - 1].isCaptured) {
       emitByte(OP_CLOSE_UPVALUE);
     } else {
@@ -758,11 +765,15 @@ static void continueStatement() {
 static void forStatement() {
   beginScope();
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+  Token name;
+  int varIndex = -1;
   if (match(TOKEN_SEMICOLON)) {
     // No initializer.
   } else if (match(TOKEN_VAL)) {
     varDeclaration(false);
   } else if (match(TOKEN_VAR)) {
+    name = parser.current;
+    varIndex = current->localCount;
     varDeclaration(true);
   } else {
     expressionStatement();
@@ -791,9 +802,22 @@ static void forStatement() {
     patchJump(bodyJump);
   }
 
-  beginLoop(loopStart);
+  beginLoop(loopStart, varIndex);
+
+  if (varIndex != -1) {
+    beginScope();
+    addLocal(name);
+    emitLongInstruction(OP_GET_LOCAL, varIndex & 0xff, varIndex >> 8 & 0xff, varIndex >> 16 & 0xff);
+    defineVariable(varIndex + 1, true);
+  }
 
   statement();
+
+  if (varIndex != -1) {
+    emitLongInstruction(OP_SET_LOCAL, varIndex & 0xff, varIndex >> 8 & 0xff, varIndex >> 16 & 0xff);
+    endScope();
+  }
+
   emitLoop(loopStart);
 
   if (exitJump != -1) {
@@ -911,7 +935,7 @@ static void whileStatement() {
   int exitJump = emitJump(OP_JUMP_IF_FALSE);
   emitByte(OP_POP);
 
-  beginLoop(loopStart);
+  beginLoop(loopStart, -1);
 
   statement();
   emitLoop(loopStart);
