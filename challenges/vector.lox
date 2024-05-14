@@ -1,0 +1,36 @@
+fun makeVector(x, y) {
+  fun vector(field) {
+    if (field == "x") {
+      return x;
+    }
+    if (field == "y") {
+      return y;
+    }
+    return nil;
+  }
+
+  return vector;
+}
+
+fun vectorX(vector) {
+  return vector("x");
+}
+
+fun vectorY(vector) {
+  return vector("y");
+}
+
+fun vectorAdd(a, b) {
+  return makeVector(vectorX(a) + vectorX(b), vectorY(a) + vectorY(b));
+}
+
+var v1 = makeVector(1, 2);
+print vectorX(v1);
+print vectorY(v1);
+var v2 = makeVector(3, 4);
+print vectorX(v2);
+print vectorY(v2);
+
+var v3 = vectorAdd(v1, v2);
+print vectorX(v3);
+print vectorY(v3);
