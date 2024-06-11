@@ -269,7 +269,6 @@ static void endScope() {
     ObjVector *vector = AS_VECTOR(value);
     vector->valueArray.count--;
     if (vector->valueArray.count == 0) {
-      freeValueArray(&vector->valueArray);
       tableDelete(&current->localTable, identifier);
     }
     current->localCount--;

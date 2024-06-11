@@ -124,14 +124,15 @@ static void freeObject(Obj* object) {
       freeString(string);
       break;
     }
-    case OBJ_VECTOR: {
-      ObjVector* vector = (ObjVector*)object;
-      freeValueArray(&vector->valueArray);
-      break;
-    }
     case OBJ_UPVALUE:
       FREE(ObjUpvalue, object);
       break;
+    case OBJ_VECTOR: {
+      ObjVector* vector = (ObjVector*)object;
+      freeValueArray(&vector->valueArray);
+      FREE(ObjVector, object);
+      break;
+    }
   }
 }
 
