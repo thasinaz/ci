@@ -13,8 +13,14 @@
 static Obj* allocateObject(size_t size, ObjType type) {
   Obj* object = (Obj*)reallocate(NULL, 0, size);
   object->type = type;
+  object->isMarked = false;
 
   object->next = vm.objects;
+
+#ifdef DEBUG_LOG_GC
+  printf("%p allocate %zu for %d\n", (void*)object, size, type);
+#endif
+
   vm.objects = object;
   return object;
 }
@@ -85,7 +91,9 @@ ObjString* internString(ObjString* string) {
   if (interned != NULL) return interned;
 
   string->hash = hash;
+  push(OBJ_VAL(string));
   tableSet(&vm.strings, OBJ_VAL(string), NIL_VAL);
+  pop();
   return string;
 }
 
@@ -103,7 +111,9 @@ ObjString* takeString(char* chars, int length) {
   string->hash = hash;
   string->length = length;
   string->chars = chars;
+  push(OBJ_VAL(string));
   tableSet(&vm.strings, OBJ_VAL(string), NIL_VAL);
+  pop();
   return string;
 }
 
@@ -117,7 +127,9 @@ ObjString* stringLiteral(const char* chars, int length) {
   string->hash = hash;
   string->length = length;
   string->chars = chars;
+  push(OBJ_VAL(string));
   tableSet(&vm.strings, OBJ_VAL(string), NIL_VAL);
+  pop();
   return string;
 }
 

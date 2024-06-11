@@ -65,6 +65,13 @@ static void defineNative(const char* name, NativeFn function, int arity) {
 void initVM() {
   resetStack();
   vm.objects = NULL;
+  vm.bytesAllocated = 0;
+  vm.nextGC = 1024 * 1024;
+
+  vm.grayCount = 0;
+  vm.grayCapacity = 0;
+  vm.grayStack = NULL;
+
   initTable(&vm.globalNames);
   initValueArray(&vm.globalValues);
   initValueArray(&vm.globalIdentifiers);
@@ -210,8 +217,8 @@ static bool isFalsey(Value value) {
 }
 
 static void concatenate() {
-  ObjString* b = AS_STRING(pop());
-  ObjString* a = AS_STRING(pop());
+  ObjString* b = AS_STRING(peek(0));
+  ObjString* a = AS_STRING(peek(1));
 
   int length = a->length + b->length;
   ObjString* result = allocateString(length);
@@ -220,6 +227,8 @@ static void concatenate() {
   memcpy(result->_chars + a->length, b->chars, b->length);
   result = internString(result);
 
+  pop();
+  pop();
   push(OBJ_VAL(result));
 }
 

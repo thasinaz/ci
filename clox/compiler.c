@@ -6,6 +6,7 @@
 #include "compiler.h"
 #include "memory.h"
 #include "scanner.h"
+#include "vm.h"
 
 #ifdef DEBUG_PRINT_CODE
 #include "debug.h"
@@ -322,11 +323,13 @@ static int identifierConstant(Token* name) {
     return (int)AS_NUMBER(index);
   }
 
+  push(identifier);
   int newIndex = vm.globalValues.count;
   writeValueArray(&vm.globalValues, UNDEFINED_VAL);
   writeValueArray(&vm.globalIdentifiers, identifier);
 
   tableSet(&vm.globalNames, identifier, NUMBER_VAL((double)newIndex));
+  pop();
   return newIndex;
 }
 
@@ -400,14 +403,18 @@ static int resolveUpvalue(Compiler* compiler, Token* name) {
 
 static void addLocal(Token name) {
   Value identifier = OBJ_VAL(stringLiteral(name.start, name.length));
+  push(identifier);
   Value value;
   if (tableGet(&current->localTable, identifier, &value)) {
     writeValueArray(&AS_VECTOR(value)->valueArray, NUMBER_VAL((double)current->localCount));
   } else {
     ObjVector *vector = allocateVector();
+    push(OBJ_VAL(vector));
     writeValueArray(&vector->valueArray, NUMBER_VAL((double)current->localCount));
     tableSet(&current->localTable, identifier, OBJ_VAL(vector));
+    pop();
   }
+  pop();
 
   if (current->localCapacity < current->localCount + 1) {
     int oldCapacity = current->localCapacity;
@@ -1026,4 +1033,13 @@ ObjFunction* compile(const char* source) {
 
   ObjFunction* function = endCompiler();
   return parser.hadError ? NULL : function;
+}
+
+void markCompilerRoots() {
+  Compiler* compiler = current;
+  while (compiler != NULL) {
+    markObject((Obj*)compiler->function);
+    markTable(&compiler->localTable);
+    compiler = compiler->enclosing;
+  }
 }
