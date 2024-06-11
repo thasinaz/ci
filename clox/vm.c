@@ -71,6 +71,7 @@ void initVM() {
   vm.grayCount = 0;
   vm.grayCapacity = 0;
   vm.grayStack = NULL;
+  vm.markValue = true;
 
   initTable(&vm.globalNames);
   initValueArray(&vm.globalValues);
