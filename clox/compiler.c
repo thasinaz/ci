@@ -484,6 +484,18 @@ static void call(bool canAssign) {
   emitBytes(OP_CALL, argCount);
 }
 
+static void dot(bool canAssign) {
+  consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
+  int name = addConstant(currentChunk(), OBJ_VAL(stringLiteral(parser.previous.start, parser.previous.length)));
+
+  if (canAssign && match(TOKEN_EQUAL)) {
+    expression();
+    emitLongInstruction(OP_SET_PROPERTY, name & 0xff, name >> 8 & 0xff, name >> 16 & 0xff);
+  } else {
+    emitLongInstruction(OP_GET_PROPERTY, name & 0xff, name >> 8 & 0xff, name >> 16 & 0xff);
+  }
+}
+
 static void literal(bool canAssign) {
   switch (parser.previous.type) {
     case TOKEN_FALSE: emitByte(OP_FALSE); break;
@@ -592,7 +604,7 @@ ParseRule rules[] = {
   [TOKEN_LEFT_BRACE]    = {NULL,     NULL,        PREC_NONE},
   [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,        PREC_NONE},
   [TOKEN_COMMA]         = {NULL,     NULL,        PREC_NONE},
-  [TOKEN_DOT]           = {NULL,     NULL,        PREC_NONE},
+  [TOKEN_DOT]           = {NULL,     dot,         PREC_CALL},
   [TOKEN_MINUS]         = {unary,    binary,      PREC_TERM},
   [TOKEN_PLUS]          = {NULL,     binary,      PREC_TERM},
   [TOKEN_SEMICOLON]     = {NULL,     NULL,        PREC_NONE},
@@ -743,6 +755,20 @@ static void function(FunctionType type) {
     emitByte(compiler.upvalues[i].isLocal ? 1 : 0);
     emitByte(compiler.upvalues[i].index);
   }
+}
+
+static void classDeclaration() {
+  consume(TOKEN_IDENTIFIER, "Expect class name.");
+  int nameConstant = identifierConstant(&parser.previous);
+  declareVariable();
+
+  int arg = addConstant(currentChunk(), OBJ_VAL(stringLiteral(parser.previous.start, parser.previous.length)));
+  emitLongInstruction(OP_CLASS, arg & 0xff, arg >> 8 & 0xff, arg >> 16 & 0xff);
+
+  defineVariable(nameConstant, false);
+
+  consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
+  consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
 }
 
 static void funDeclaration() {
@@ -979,7 +1005,9 @@ static void synchronize() {
 }
 
 static void declaration() {
-  if (match(TOKEN_FUN)) {
+  if (match(TOKEN_CLASS)) {
+    classDeclaration();
+  } else if (match(TOKEN_FUN)) {
     funDeclaration();
   } else if (match(TOKEN_VAL)) {
     varDeclaration(false);
