@@ -38,6 +38,43 @@ static bool hasFieldNative(int argCount, Value* args) {
   return true;
 }
 
+static bool getFieldNative(int argCount, Value* args) {
+  if (!IS_INSTANCE(args[0])) {
+    args[-1] = OBJ_VAL(stringLiteral("Not object", 10));
+    return false;
+  }
+  if (!IS_STRING(args[1])) {
+    args[-1] = OBJ_VAL(stringLiteral("Field name must be string", 25));
+    return false;
+  }
+
+  ObjInstance* instance = AS_INSTANCE(args[0]);
+  Value value;
+  if (tableGet(&instance->fields, args[1], &value)) {
+    args[-1] = value;
+    return true;
+  }
+
+  args[-1] = OBJ_VAL(stringLiteral("Undefined field", 15));
+  return false;
+}
+
+static bool setFieldNative(int argCount, Value* args) {
+  if (!IS_INSTANCE(args[0])) {
+    args[-1] = OBJ_VAL(stringLiteral("Not object", 10));
+    return false;
+  }
+  if (!IS_STRING(args[1])) {
+    args[-1] = OBJ_VAL(stringLiteral("Field name must be string", 25));
+    return false;
+  }
+
+  ObjInstance* instance = AS_INSTANCE(args[0]);
+  Value value;
+  args[-1] = BOOL_VAL(tableSet(&instance->fields, args[1], args[2]));
+  return true;
+}
+
 static void resetStack() {
   vm.stackTop = vm.stack;
   vm.frameCount = 0;
@@ -97,6 +134,8 @@ void initVM() {
   defineNative("clock", clockNative, 0);
   defineNative("err", errNative, 0);
   defineNative("hasField", hasFieldNative, 2);
+  defineNative("getField", getFieldNative, 2);
+  defineNative("setField", setFieldNative, 3);
 }
 
 void freeVM() {
