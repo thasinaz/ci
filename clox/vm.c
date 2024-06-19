@@ -22,6 +22,22 @@ static bool errNative(int argCount, Value* args) {
   return false;
 }
 
+static bool hasFieldNative(int argCount, Value* args) {
+  if (!IS_INSTANCE(args[0])) {
+    args[-1] = OBJ_VAL(stringLiteral("Not object", 10));
+    return false;
+  }
+  if (!IS_STRING(args[1])) {
+    args[-1] = OBJ_VAL(stringLiteral("Field name must be string", 25));
+    return false;
+  }
+
+  ObjInstance* instance = AS_INSTANCE(args[0]);
+  Value dummy;
+  args[-1] = BOOL_VAL(tableGet(&instance->fields, args[1], &dummy));
+  return true;
+}
+
 static void resetStack() {
   vm.stackTop = vm.stack;
   vm.frameCount = 0;
@@ -80,6 +96,7 @@ void initVM() {
 
   defineNative("clock", clockNative, 0);
   defineNative("err", errNative, 0);
+  defineNative("hasField", hasFieldNative, 2);
 }
 
 void freeVM() {
