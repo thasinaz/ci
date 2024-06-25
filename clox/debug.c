@@ -46,6 +46,17 @@ static int constantLongInstruction(const char* name, Chunk* chunk,
   return offset + 4;
 }
 
+static int invokeInstruction(const char* name, Chunk* chunk,
+                                int offset) {
+  uint8_t constant[3] = {chunk->code[offset + 1], chunk->code[offset + 2], chunk->code[offset + 3]};
+  uint8_t argCount = chunk->code[offset + 4];
+  printf("%-16s (%d args) %4d %4d %4d '", name, argCount, constant[0], constant[1], constant[2]);
+  int index = (int)constant[2] << 16 | (int)constant[1] << 8 | (int)constant[0];
+  printValue(chunk->constants.values[index]);
+  printf("'\n");
+  return offset + 5;
+}
+
 static int simpleInstruction(const char* name, int offset) {
   printf("%s\n", name);
   return offset + 1;
@@ -145,6 +156,8 @@ int disassembleInstruction(Chunk* chunk, int offset) {
       return jumpInstruction("OP_LOOP", -1, chunk, offset);
     case OP_CALL:
       return byteInstruction("OP_CALL", chunk, offset);
+    case OP_INVOKE:
+      return invokeInstruction("OP_INVOKE", chunk, offset);
     case OP_CLOSURE: {
       uint8_t constant[3] = {chunk->code[offset + 1], chunk->code[offset + 2], chunk->code[offset + 3]};
       offset += 4;
@@ -169,6 +182,8 @@ int disassembleInstruction(Chunk* chunk, int offset) {
       return simpleInstruction("OP_RETURN", offset);
     case OP_CLASS:
       return constantLongInstruction("OP_CLASS", chunk, offset);
+    case OP_METHOD:
+      return constantLongInstruction("OP_METHOD", chunk, offset);
     default:
       printf("Unknown opcode %d\n", instruction);
       return offset + 1;

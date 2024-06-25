@@ -24,6 +24,7 @@ typedef struct {
   ValueArray globalValues;
   ValueArray globalIdentifiers;
   Table strings;
+  Value initString;
   ObjUpvalue* openUpvalues;
 
   size_t bytesAllocated;
