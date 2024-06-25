@@ -241,10 +241,8 @@ static bool callValue(Value callee, int argCount) {
       case OBJ_CLASS: {
         ObjClass* klass = AS_CLASS(callee);
         vm.stackTop[-argCount - 1] = OBJ_VAL(newInstance(klass));
-        Value initializer;
-        if (tableGet(&klass->methods, vm.initString,
-                     &initializer)) {
-          return callValue(initializer, argCount);
+        if (!IS_NIL(klass->init)) {
+          return callValue(klass->init, argCount);
         } else if (argCount != 0) {
           runtimeError("Expected 0 arguments but got %d.",
                        argCount);
@@ -360,6 +358,7 @@ static void closeUpvalues(Value* last) {
 static void defineMethod(Value name) {
   Value method = peek(0);
   ObjClass* klass = AS_CLASS(peek(1));
+  if (valuesEqual(name, vm.initString)) klass->init = method;
   tableSet(&klass->methods, name, method);
   pop();
 }
