@@ -236,7 +236,7 @@ static bool callValue(Value callee, int argCount) {
       case OBJ_BOUND_METHOD: {
         ObjBoundMethod* bound = AS_BOUND_METHOD(callee);
         vm.stackTop[-argCount - 1] = bound->receiver;
-        return callClosure(bound->method, argCount);
+        return callValue(bound->method, argCount);
       }
       case OBJ_CLASS: {
         ObjClass* klass = AS_CLASS(callee);
@@ -314,8 +314,7 @@ static bool bindMethod(ObjClass* klass, Value name) {
     return false;
   }
 
-  ObjBoundMethod* bound = newBoundMethod(peek(0),
-                                         AS_CLOSURE(method));
+  ObjBoundMethod* bound = newBoundMethod(peek(0), method);
   pop();
   push(OBJ_VAL(bound));
   return true;
@@ -545,6 +544,18 @@ static InterpretResult run() {
         push(value);
         break;
       }
+      case OP_GET_SUPER: {
+        int a = (int)READ_BYTE();
+        int b = (int)READ_BYTE();
+        int c = (int)READ_BYTE();
+        Value name = frame->function->chunk.constants.values[c << 16 | b << 8 | a];
+        ObjClass* superclass = AS_CLASS(pop());
+
+        if (!bindMethod(superclass, name)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        break;
+      }
       case OP_EQUAL: {
         Value b = pop();
         Value a = pop();
@@ -624,6 +635,21 @@ static InterpretResult run() {
         ip = frame->ip;
         break;
       }
+      case OP_SUPER_INVOKE: {
+        int a = (int)READ_BYTE();
+        int b = (int)READ_BYTE();
+        int c = (int)READ_BYTE();
+        Value method = frame->function->chunk.constants.values[c << 16 | b << 8 | a];
+        int argCount = READ_BYTE();
+        ObjClass* superclass = AS_CLASS(pop());
+        frame->ip = ip;
+        if (!invokeFromClass(superclass, method, argCount)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        frame = &vm.frames[vm.frameCount - 1];
+        ip = frame->ip;
+        break;
+      }
       case OP_CLOSURE: {
         int a = (int)READ_BYTE();
         int b = (int)READ_BYTE();
@@ -668,6 +694,19 @@ static InterpretResult run() {
         int c = (int)READ_BYTE();
         Value name = frame->function->chunk.constants.values[c << 16 | b << 8 | a];
         push(OBJ_VAL(newClass(AS_STRING(name))));
+        break;
+      }
+      case OP_INHERIT: {
+        Value superclass = peek(1);
+        if (!IS_CLASS(superclass)) {
+          runtimeError("Superclass must be a class.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+
+        ObjClass* subclass = AS_CLASS(peek(0));
+        tableAddAll(&AS_CLASS(superclass)->methods,
+                    &subclass->methods);
+        pop(); // Subclass.
         break;
       }
       case OP_METHOD: {

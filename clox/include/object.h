@@ -101,11 +101,10 @@ typedef struct {
 typedef struct {
   Obj obj;
   Value receiver;
-  ObjClosure* method;
+  Value method;
 } ObjBoundMethod;
 
-ObjBoundMethod* newBoundMethod(Value receiver,
-                               ObjClosure* method);
+ObjBoundMethod* newBoundMethod(Value receiver, Value method);
 ObjClass* newClass(ObjString* name);
 ObjClosure* newClosure(ObjFunction* function);
 ObjFunction* newFunction();
