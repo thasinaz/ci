@@ -200,7 +200,7 @@ static void markRoots() {
   markArray(&vm.globalValues);
   markArray(&vm.globalIdentifiers);
   markCompilerRoots();
-  markObject(AS_OBJ(vm.initString));
+  markValue(vm.initString);
 }
 
 static void traceReferences() {

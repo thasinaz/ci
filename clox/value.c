@@ -40,6 +40,21 @@ static uint32_t hashDouble(double value) {
 }
 
 uint32_t hashValue(Value value) {
+#ifdef NAN_BOXING
+  if (IS_BOOL(value)) {
+    return AS_BOOL(value) ? 3 : 5;
+  } else if (IS_NIL(value)) {
+    return 7;
+  } else if (IS_NUMBER(value)) {
+    return hashDouble(AS_NUMBER(value));
+  } else if (IS_OBJ(value)) {
+    return AS_STRING(value)->hash;
+  } else if (IS_EMPTY(value)) {
+    return 0;
+  } else if (IS_UNDEFINED(value)) {
+    return 9;
+  }
+#else
   switch (value.type) {
     case VAL_BOOL: return AS_BOOL(value) ? 3 : 5;
     case VAL_NIL: return 7;
@@ -48,9 +63,25 @@ uint32_t hashValue(Value value) {
     case VAL_EMPTY: return 0;
     case VAL_UNDEFINED: return 9;
   }
+#endif
 }
 
 void printValue(Value value) {
+#ifdef NAN_BOXING
+  if (IS_BOOL(value)) {
+    printf(AS_BOOL(value) ? "true" : "false");
+  } else if (IS_NIL(value)) {
+    printf("nil");
+  } else if (IS_NUMBER(value)) {
+    printf("%g", AS_NUMBER(value));
+  } else if (IS_OBJ(value)) {
+    printObject(value);
+  } else if (IS_EMPTY(value)) {
+    printf("<empty>");
+  } else if (IS_UNDEFINED(value)) {
+    printf("<undefined>");
+  }
+#else
   switch (value.type) {
     case VAL_BOOL:
       printf(AS_BOOL(value) ? "true" : "false");
@@ -61,9 +92,16 @@ void printValue(Value value) {
     case VAL_EMPTY: printf("<empty>"); break;
     case VAL_UNDEFINED: printf("<undefined>"); break;
   }
+#endif
 }
 
 bool valuesEqual(Value a, Value b) {
+#ifdef NAN_BOXING
+  if (IS_NUMBER(a) && IS_NUMBER(b)) {
+    return AS_NUMBER(a) == AS_NUMBER(b);
+  }
+  return a == b;
+#else
   if (a.type != b.type) return false;
   switch (a.type) {
     case VAL_BOOL:      return AS_BOOL(a) == AS_BOOL(b);
@@ -74,4 +112,5 @@ bool valuesEqual(Value a, Value b) {
     case VAL_UNDEFINED: return true;
     default:         return false; // Unreachable.
   }
+#endif
 }
